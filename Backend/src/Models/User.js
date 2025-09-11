@@ -25,7 +25,7 @@ const userSchema = new mongoose.Schema({
             return !this.isGoogleUser;
         },
         minLength: [6, "Password must be at least 6 characters"],
-        select: false // Don't send password in queries by default
+        // select: false // Don't send password in queries by default
     },
     profilePicture: {
         type: String,

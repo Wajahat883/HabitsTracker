@@ -21,9 +21,13 @@ const authMiddleware = async (req, res, next) => {
 
 // middlewares/errorHandler.js
 export const errorHandler = (err, req, res, next) => {
-  console.error("💥 Backend Error:", err.stack || err.message);
-  res.status(500).json({ message: err.message || "Internal Server Error" });
+  console.error(err.stack);
+  res.status(400).json({
+    success: false,
+    message: err.message || "Server Error",
+  });
 };
+
 
 
 export default authMiddleware;

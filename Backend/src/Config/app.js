@@ -10,7 +10,7 @@ import { errorHandler } from '../Middleware/authMiddleware.js';
 
 
 const app = express();
-app.use(errorHandler);
+
 
 app.use(cors({
     origin: "http://localhost:5173",
@@ -25,5 +25,6 @@ app.use(cookieParser());
 // 👇 yahan routes mount karo
 app.use("/api/auth", authRoutes);
 app.use("/api/user", profileRoutes);
+app.use(errorHandler);
 
 export default app;

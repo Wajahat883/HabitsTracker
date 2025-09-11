@@ -43,8 +43,11 @@ const setAuthCookies = (res, accessToken, refreshToken) => {
 const registerUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
 
-  const existingUser = await User.findOne({ email });
-  if (existingUser) throw new ApiError(400, "User already exists");
+  const existingUser = await User.findOne({ $or: [ { email }, { username } ] });
+  if (existingUser) {
+    if (existingUser.email === email) throw new ApiError(400, "Email already exists");
+    if (existingUser.username === username) throw new ApiError(400, "Username already exists");
+  }
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -64,12 +67,13 @@ const registerUser = asyncHandler(async (req, res) => {
 // ==================== LOCAL LOGIN ====================
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-
-  const user = await User.findOne({ email });
-  if (!user) throw new ApiError(401, "Invalid credentials");
-
+  // Always select password field
+  const user = await User.findOne({ email }).select("password");
+  if (!user) throw new ApiError(401, "Invalid credentials: user not found");
+  if (user.isGoogleUser) throw new ApiError(401, "Please login with Google");
+  if (!user.password) throw new ApiError(401, "This account was created with Google. Please use Google login.");
   const isValid = await bcrypt.compare(password, user.password);
-  if (!isValid) throw new ApiError(401, "Invalid credentials");
+  if (!isValid) throw new ApiError(401, "Invalid credentials: password incorrect");
 
   const { accessToken, refreshToken } = generateTokens(user._id);
   user.refreshToken = refreshToken;

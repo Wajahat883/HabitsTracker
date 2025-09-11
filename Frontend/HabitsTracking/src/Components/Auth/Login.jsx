@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import GoogleLoginButton from "./GoogleLoginButton";
 import Loader from "../Common/Loader";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -10,6 +11,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   // =========================
   // Normal login
@@ -38,6 +40,7 @@ const Login = () => {
       }
       if (response.ok) {
         setMessage("Login successful!");
+        navigate("/dashboard");
       } else {
         setMessage(data.message || "Login failed");
       }
@@ -69,10 +72,12 @@ const Login = () => {
         { withCredentials: true }
       );
       setMessage(data.message || "Google login successful!");
+      if (data.success || data.accessToken) {
+        navigate("/dashboard");
+      }
     } catch (err) {
       setMessage(err.response?.data?.message || "Google login failed");
     } finally {
-      setLoading(false);
       setLoading(false);
     }
   };
