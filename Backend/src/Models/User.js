@@ -59,6 +59,14 @@ const userSchema = new mongoose.Schema({
         type: String,
         enum: ["public", "private", "friends"],
         default: "friends"
+    },
+    resetPasswordToken: {
+        type: String,
+        select: false
+    },
+    resetPasswordExpire: {
+        type: Date,
+        select: false
     }
 }, { timestamps: true });
 

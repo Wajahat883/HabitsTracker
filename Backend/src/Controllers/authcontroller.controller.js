@@ -5,6 +5,8 @@ import { OAuth2Client } from "google-auth-library";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiErros.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -157,4 +159,50 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
-export { registerUser, loginUser, googleAuth, logoutUser, refreshAccessToken };
+// ==================== PASSWORD RESET ====================
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) throw new ApiError(404, "User not found");
+
+  // Generate reset token
+  const resetToken = crypto.randomBytes(32).toString("hex");
+  const resetTokenHash = crypto.createHash("sha256").update(resetToken).digest("hex");
+  user.resetPasswordToken = resetTokenHash;
+  user.resetPasswordExpire = Date.now() + 1000 * 60 * 30; // 30 min
+  await user.save();
+
+  // Send email
+  const resetUrl = `http://localhost:5173/reset-password?token=${resetToken}&email=${email}`;
+  // Configure nodemailer
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+  await transporter.sendMail({
+    to: email,
+    subject: "Password Reset",
+    html: `<p>Click <a href='${resetUrl}'>here</a> to reset your password. This link expires in 30 minutes.</p>`
+  });
+  res.json(new ApiResponse(200, {}, "Password reset email sent"));
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  const { email, token, newPassword } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) throw new ApiError(404, "User not found");
+  if (!user.resetPasswordToken || !user.resetPasswordExpire) throw new ApiError(400, "No reset request found");
+  if (user.resetPasswordExpire < Date.now()) throw new ApiError(400, "Reset token expired");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  if (tokenHash !== user.resetPasswordToken) throw new ApiError(400, "Invalid reset token");
+  user.password = await bcrypt.hash(newPassword, 10);
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  await user.save();
+  res.json(new ApiResponse(200, {}, "Password reset successful"));
+});
+
+export { registerUser, loginUser, googleAuth, logoutUser, refreshAccessToken, forgotPassword, resetPassword };

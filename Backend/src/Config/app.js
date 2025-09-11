@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "../Routes/auth.routes.js";  // 👈 import
+import profileRoutes from "../Routes/profile.routes.js";
 import { errorHandler } from '../Middleware/authMiddleware.js';
 
 
@@ -23,5 +24,6 @@ app.use(cookieParser());
 
 // 👇 yahan routes mount karo
 app.use("/api/auth", authRoutes);
+app.use("/api/user", profileRoutes);
 
 export default app;

@@ -26,11 +26,16 @@ const Login = () => {
         credentials: "include",
         body: JSON.stringify({ email, password }),
       });
-
-      // JSON parse kar ke data me store
-      const data = await response.json();
-
-      // status check
+      let data;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        setMessage("Server error: " + text);
+        setLoading(false);
+        return;
+      }
       if (response.ok) {
         setMessage("Login successful!");
       } else {

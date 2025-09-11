@@ -28,7 +28,7 @@ const Signup = () => {
         setMessage(data.message || "Signup failed");
       }
     } catch (err) {
-      setMessage("Server error",err);
+      setMessage(err.message || "Server error");
     } finally {
       setLoading(false);
     }
