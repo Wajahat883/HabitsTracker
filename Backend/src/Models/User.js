@@ -1,4 +1,8 @@
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+
+import  {ApiResponse}  from "../utils/ApiResponse.js";
 
 const userSchema = new mongoose.Schema({
     username: {
@@ -17,12 +21,35 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: [true,"password is required"],
-        minLength:[8,"password must be at least 8 characters"],
-        select: false
+        required: function() {
+            return !this.isGoogleUser;
+        },
+        minLength: [6, "Password must be at least 6 characters"],
+        select: false // Don't send password in queries by default
     },
-    profilePic: {
-        type: String
+    profilePicture: {
+        type: String,
+        default:""
+    },
+    googleId:{
+        type:String,
+        sparse:true,
+        unique:true
+    },
+    isGoogleUser:{
+        type:Boolean,
+        default:false,
+    },
+
+    //For authentication via OTP
+    refreshToken:{
+        type:String,
+        select:false
+    },
+    role:{
+        type:String,
+        enum:["user","admin"],
+        default:"user"
     },
     friends: [{
         type: mongoose.Schema.Types.ObjectId,
@@ -34,6 +61,56 @@ const userSchema = new mongoose.Schema({
         default: "friends"
     }
 }, { timestamps: true });
+
+//hash password before saving the user
+userSchema.pre("save",async function name(next) {
+    if(!this.isModified("password")){
+        return next();
+    }
+    try {
+        const salt =await bcrypt.genSalt(10);
+        this.password=await bcrypt.hash(this.password,salt);
+        next();
+    } catch (error) {
+        next(error)
+    }
+})
+// Method to compare password
+userSchema.methods.comparePassword=async function name(candidatePassword){
+    try {
+       return await bcrypt.compare(candidatePassword,this.password); 
+    } catch (error) {
+        throw new ApiResponse(500,"Server Error");
+        
+    } 
+    
+}
+//Methode to genrate jwt token
+userSchema.methods.generateToken = function () {
+    return jwt.sign(
+        {
+            userId:this._id,
+            role:this.role
+        },
+        process.env.ACCESS_TOKEN_SECRET,
+        {
+            expiresIn:process.env.ACCESS_TOKEN_EXPIRY
+        }
+    );
+}
+// Method to generate refresh token
+userSchema.methods.generateRefreshToken = function () {
+    return jwt.sign(
+        {
+            userId:this._id,
+            role:this.role
+        },
+        process.env.REFRESH_TOKEN_SECRET,
+        {
+            expiresIn:process.env.REFRESH_TOKEN_EXPIRY
+        }
+    );
+}
 
 const User = mongoose.model("User", userSchema);
 export default User;
