@@ -26,6 +26,8 @@ const Login = () => {
     type: "success",
   });
   const [loading, setLoading] = useState(false);
+  const [streakPopup, setStreakPopup] = useState(false);
+  const [userStreak, setUserStreak] = useState(0); // Example streak value
   const navigate = useNavigate();
 
   const showToast = (msg, type = "success") => {
@@ -54,13 +56,19 @@ const Login = () => {
         return;
       }
       if (response.ok) {
-        showToast("Welcome!", "success");
-        navigate("/dashboard");
+        showToast("Login successful!", "success");
+        // Fetch streak info (replace with real API call if available)
+        setUserStreak(7); // Example: set streak to 7
+        setStreakPopup(true);
+        setTimeout(() => {
+          setStreakPopup(false);
+          navigate("/dashboard");
+        }, 2000);
       } else {
         showToast(data.message || "Login failed", "error");
       }
-    } catch {
-      showToast("Login failed due to network error", "error");
+    } catch (err) {
+      showToast("Server error", "error");
     } finally {
       setLoading(false);
     }
@@ -97,6 +105,12 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-black">
       {toast.show && <Toast message={toast.message} type={toast.type} />}
+      {streakPopup && (
+        <div className="fixed top-8 left-8 z-50 px-8 py-6 rounded-xl shadow-2xl bg-blue-900 text-white font-bold text-xl flex items-center gap-4 animate-fade-in">
+          <span>🔥</span>
+          <span>Your current streak: {userStreak} days!</span>
+        </div>
+      )}
       <div className="flex w-full max-w-4xl bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
         {/* Left: Login Form */}
         <div className="w-full md:w-1/2 p-10 flex flex-col justify-center">

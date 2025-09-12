@@ -1,0 +1,15 @@
+import mongoose from "mongoose";
+
+const habitLogSchema = new mongoose.Schema({
+  habit: { type: mongoose.Schema.Types.ObjectId, ref: "Habit", required: true, index: true },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
+  date: { type: String, required: true }, // store as YYYY-MM-DD UTC string
+  status: { type: String, enum: ["completed", "missed", "skipped", "partial"], required: true },
+  note: { type: String, maxlength: 300 }
+}, { timestamps: true });
+
+habitLogSchema.index({ habit: 1, date: 1 }, { unique: true });
+habitLogSchema.index({ user: 1, date: 1 });
+
+const HabitLog = mongoose.model("HabitLog", habitLogSchema);
+export default HabitLog;

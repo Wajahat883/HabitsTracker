@@ -4,25 +4,50 @@ const habitSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
-        required: true
+        required: true,
+        index: true
     },
     title: {
         type: String,
+        required: true,
+        minlength: 3,
+        maxlength: 60
+    },
+    description: {
+        type: String,
+        maxlength: 300
+    },
+    frequencyType: {
+        type: String,
+        enum: ["daily", "weekly", "monthly", "custom"],
         required: true
     },
-    details: {
+    daysOfWeek: [
+        {
+            type: Number,
+            min: 0,
+            max: 6
+        }
+    ], // required when weekly
+    timesPerPeriod: {
+        type: Number,
+        min: 1
+    },
+    colorTag: {
         type: String
     },
-    frequency: {
-        type: String,
-        enum: ["daily", "weekly", "monthly"],
-        required: true
+    icon: {
+        type: String
     },
-    trackingData: [{
-        date: Date,
-        value: String // check/cross or number/text
-    }]
+    isArchived: {
+        type: Boolean,
+        default: false,
+        index: true
+    }
 }, { timestamps: true });
+
+habitSchema.index({ user: 1, isArchived: 1 });
+habitSchema.index({ user: 1, frequencyType: 1 });
 
 const Habit = mongoose.model("Habit", habitSchema);
 export default Habit;

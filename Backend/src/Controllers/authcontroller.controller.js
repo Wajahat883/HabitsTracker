@@ -1,5 +1,5 @@
 import User from "../Models/User.js";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -49,9 +49,7 @@ const registerUser = asyncHandler(async (req, res) => {
     if (existingUser.username === username) throw new ApiError(400, "Username already exists");
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  const user = await User.create({ username, email, password: hashedPassword });
+  const user = await User.create({ username, email, password });
 
   const { accessToken, refreshToken } = generateTokens(user._id);
   user.refreshToken = refreshToken;
@@ -66,9 +64,12 @@ const registerUser = asyncHandler(async (req, res) => {
 
 // ==================== LOCAL LOGIN ====================
 const loginUser = asyncHandler(async (req, res) => {
+  if (!req.body || !req.body.email || !req.body.password) {
+    throw new ApiError(400, "Email and password are required.");
+  }
   const { email, password } = req.body;
-  // Always select password field
-  const user = await User.findOne({ email }).select("password");
+  // Select password and isGoogleUser fields for proper login logic
+  const user = await User.findOne({ email }).select("+password isGoogleUser");
   if (!user) throw new ApiError(401, "Invalid credentials: user not found");
   if (user.isGoogleUser) throw new ApiError(401, "Please login with Google");
   if (!user.password) throw new ApiError(401, "This account was created with Google. Please use Google login.");
@@ -195,18 +196,15 @@ const forgotPassword = asyncHandler(async (req, res) => {
 });
 
 const resetPassword = asyncHandler(async (req, res) => {
-  const { email, token, newPassword } = req.body;
+  const { email, newPassword } = req.body;
+  if (!email || !newPassword) {
+    throw new ApiError(400, "Email and new password are required.");
+  }
   const user = await User.findOne({ email });
   if (!user) throw new ApiError(404, "User not found");
-  if (!user.resetPasswordToken || !user.resetPasswordExpire) throw new ApiError(400, "No reset request found");
-  if (user.resetPasswordExpire < Date.now()) throw new ApiError(400, "Reset token expired");
-  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-  if (tokenHash !== user.resetPasswordToken) throw new ApiError(400, "Invalid reset token");
-  user.password = await bcrypt.hash(newPassword, 10);
-  user.resetPasswordToken = undefined;
-  user.resetPasswordExpire = undefined;
+  user.password = newPassword;
   await user.save();
-  res.json(new ApiResponse(200, {}, "Password reset successful"));
+  res.status(200).json(new ApiResponse(200, {}, "Password reset successful. You can now log in."));
 });
 
 export { registerUser, loginUser, googleAuth, logoutUser, refreshAccessToken, forgotPassword, resetPassword };

@@ -4,6 +4,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "../Routes/auth.routes.js";  // 👈 import
 import profileRoutes from "../Routes/profile.routes.js";
+import habitRoutes from "../Routes/habit.routes.js";
+import progressRoutes from "../Routes/progress.routes.js";
 import { errorHandler } from '../Middleware/authMiddleware.js';
 
 
@@ -25,6 +27,8 @@ app.use(cookieParser());
 // 👇 yahan routes mount karo
 app.use("/api/auth", authRoutes);
 app.use("/api/user", profileRoutes);
+app.use("/api/habits", habitRoutes);
+app.use("/api/progress", progressRoutes);
 app.use(errorHandler);
 
 export default app;
