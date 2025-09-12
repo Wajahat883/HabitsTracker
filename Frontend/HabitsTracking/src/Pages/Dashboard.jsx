@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useChartData } from "../context/useChartData";
+import { useHabitContext } from "../context/HabitContext";
 import HabitForm from "../Components/Habits/HabitForm";
 import HabitList from "../Components/Habits/HabitList";
 import HabitTracker from "../Components/Habits/HabitTracker";
-import { fetchHabits } from "../api/habits";
-import { fetchProgressSummary } from "../api/progress";
 import { Bar, Doughnut } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -21,11 +20,13 @@ import image from '../assets/logo-habit-tracker.png';
 import ProgressSummary from "../Components/Progress/ProgressSummary";
 import HabitTrendChart from "../Components/Progress/HabitTrendChart";
 import CalendarHeatmap from "../Components/Progress/CalendarHeatmap";
+import GroupForm from "../Components/Groups/GroupForm";
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
 const sidebarItems = [
   { label: "Dashboard", icon: <FaHome /> },
   { label: "All Habits", icon: <FaListAlt /> },
+  { label: "Progress", icon: <FaRegSun /> },
   { label: "Morning", icon: <FaSun /> },
   { label: "Afternoon", icon: <FaRegSun /> },
   { label: "Evening", icon: <FaMoon /> },
@@ -71,68 +72,63 @@ const doughnutOptions = {
 
 const Dashboard = () => {
   const [activeSection, setActiveSection] = useState("Dashboard");
-  const [selectedFriend, setSelectedFriend] = useState("Ali");
-  const followers = ["Ali", "Sara", "Ahmed"];
-  const requests = ["Bilal", "Fatima"];
-  const friends = ["Ali", "Sara", "Ahmed", "Bilal", "Fatima"];
   const { userProgressData, friendData, compareData, setFriendData, setCompareData } = useChartData();
-  const [habits, setHabits] = useState([]);
-  const [selectedHabit, setSelectedHabit] = useState(null);
-  const [editingHabit, setEditingHabit] = useState(null);
-  const [habitLoading, setHabitLoading] = useState(false);
+  const {
+    habits,
+    setHabits,
+    selectedHabit,
+    setSelectedHabit,
+    editingHabit,
+    setEditingHabit,
+    habitLoading,
+    groups,
+    setGroups,
+    selectedGroup,
+    setSelectedGroup,
+    selectedFriend,
+    setSelectedFriend,
+    friendProgress,
+    setFriendProgress,
+    groupProgress,
+    setGroupProgress,
+    allUsersProgress,
+    progressSummary,
+    setProgressSummary,
+    friends,
+    loadHabits,
+    fetchFriendProgressData,
+    fetchGroupProgressData,
+  } = useHabitContext();
 
-  const loadHabits = async () => {
-    setHabitLoading(true);
-    try { const data = await fetchHabits(); setHabits(data); }
-    catch { /* could show toast */ }
-    finally { setHabitLoading(false); }
-  };
-  useEffect(() => { loadHabits(); }, []);
-
-  // Generate deterministic mock data per friend (placeholder until backend integration)
-  const generateFriendWeeklyData = (name) => {
-    const base = [8, 12, 14, 16, 19, 13, 20];
-    const shift = name.charCodeAt(0) % 5; // simple deterministic variation
-    return base.map((v, i) => (v + ((shift + i) % 3) - 1));
-  };
-
+  // Update charts with real data
   useEffect(() => {
-    if (!selectedFriend) return;
-    const newFriendValues = generateFriendWeeklyData(selectedFriend);
-    // Update friendData chart
-    setFriendData(prev => ({
-      ...prev,
-      datasets: [
-        {
-          ...prev.datasets[0],
-          label: `${selectedFriend}'s Progress`,
-          data: newFriendValues,
-        }
-      ]
-    }));
+    if (!progressSummary) return;
+    const habitStreaks = progressSummary.habitStreaks || [];
+    const labels = habitStreaks.map(h => h.title);
+    const data = habitStreaks.map(h => h.streak);
 
-    // Preserve user's dataset from existing compareData (label 'You') or create fallback
-    const userDataset = (compareData.datasets || []).find(d => d.label === 'You') || {
-      label: 'You',
-      data: [10, 15, 12, 18, 20, 17, 22],
-      backgroundColor: '#38bdf8',
-      borderRadius: 8
-    };
+    // Update friendData to show habit streaks
+    setFriendData({
+      labels,
+      datasets: [{
+        label: 'Habit Streaks',
+        data,
+        backgroundColor: '#38bdf8',
+        borderRadius: 8
+      }]
+    });
 
-    setCompareData(prev => ({
-      ...prev,
-      datasets: [
-        userDataset,
-        {
-          label: selectedFriend,
-            data: newFriendValues,
-            backgroundColor: '#34d399',
-            borderRadius: 8
-        }
-      ]
-    }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFriend]);
+    // Update compareData to show streaks
+    setCompareData({
+      labels,
+      datasets: [{
+        label: 'Streaks',
+        data,
+        backgroundColor: '#34d399',
+        borderRadius: 8
+      }]
+    });
+  }, [progressSummary, setFriendData, setCompareData]);
 
   return (
     <div className="min-h-screen bg-slate-900">
@@ -175,26 +171,21 @@ const Dashboard = () => {
                 <div className="w-48 h-48 mb-4">
                   <Doughnut key="user-progress-doughnut" data={userProgressData} options={doughnutOptions} />
                 </div>
-                <div className="text-lg text-blue-400 font-bold">75% Completed</div>
+                <div className="text-lg text-blue-400 font-bold">{progressSummary ? `${progressSummary.overallCompletion}% Completed` : 'Loading...'}</div>
               </div>
               <div className="bg-slate-800 rounded-xl shadow-lg p-8">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold text-green-300">Friend's Progress</h2>
-                  <select
-                    className="bg-slate-700 text-white px-3 py-2 rounded-lg"
-                    value={selectedFriend}
-                    onChange={e => setSelectedFriend(e.target.value)}
-                  >
-                    {friends.map(friend => (
-                      <option key={friend} value={friend}>{friend}</option>
-                    ))}
-                  </select>
+                  <h2 className="text-2xl font-bold text-green-300">Habit Streaks</h2>
                 </div>
-                <Bar key={`friend-bar-${selectedFriend}`} data={friendData} options={chartOptions} />
+                <div className="aspect-square">
+                  <Bar key="habit-streaks-bar" data={friendData} options={chartOptions} />
+                </div>
               </div>
               <div className="bg-slate-800 rounded-xl shadow-lg p-8 col-span-1 md:col-span-2">
-                <h2 className="text-2xl font-bold text-purple-300 mb-4">Compare Progress</h2>
-                <Bar key="compare-bar" data={compareData} options={chartOptions} />
+                <h2 className="text-2xl font-bold text-purple-300 mb-4">Top Habit Streaks</h2>
+                <div className="aspect-square">
+                  <Bar key="top-streaks-bar" data={compareData} options={chartOptions} />
+                </div>
               </div>
               <div className="col-span-1">
                 <ProgressSummary />
@@ -210,31 +201,99 @@ const Dashboard = () => {
           {activeSection === "All Habits" && (
             <>
               <div className="col-span-1 space-y-4">
-                <HabitForm
-                  editing={editingHabit}
-                  onCreated={(h) => { setHabits(prev => [h, ...prev]); setSelectedHabit(h); }}
-                  onUpdated={(h) => {
-                    if (!h) { setEditingHabit(null); return; }
-                    setHabits(prev => prev.map(ph => ph._id === h._id ? h : ph));
-                    setEditingHabit(null);
-                    setSelectedHabit(h);
-                  }}
-                />
+                <HabitForm />
+                <GroupForm />
                 <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-white font-semibold">Your Habits</h3>
                     <button onClick={loadHabits} className="text-xs px-2 py-1 bg-slate-600 rounded text-white">Refresh</button>
                   </div>
                   {habitLoading && <div className="text-slate-400 text-xs mb-2">Loading...</div>}
-                  <HabitList
-                    habits={habits}
-                    onSelect={(h) => { setEditingHabit(h); setSelectedHabit(h); }}
-                    onArchived={(id) => setHabits(prev => prev.filter(h => h._id !== id))}
-                  />
+                  <HabitList />
                 </div>
               </div>
               <div className="col-span-1">
-                <HabitTracker habit={selectedHabit} />
+                <HabitTracker />
+              </div>
+            </>
+          )}
+          {/* Progress Section */}
+          {activeSection === "Progress" && (
+            <>
+              <div className="col-span-2 space-y-4">
+                <ProgressSummary />
+                <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                  <h3 className="text-white font-semibold mb-4">Progress Charts</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-slate-300 text-sm mb-1">Select Friend</label>
+                      <select
+                        value={selectedFriend || ""}
+                        onChange={(e) => {
+                          const friendId = e.target.value;
+                          setSelectedFriend(friendId);
+                          if (friendId) {
+                            fetchFriendProgressData(friendId);
+                          } else {
+                            setFriendProgress(null);
+                          }
+                        }}
+                        className="w-full bg-slate-700 text-white p-2 rounded border border-slate-600"
+                      >
+                        <option value="">None</option>
+                        {friends.map(f => <option key={f._id} value={f._id}>{f.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 text-sm mb-1">Select Group</label>
+                      <select
+                        value={selectedGroup || ""}
+                        onChange={(e) => {
+                          const groupId = e.target.value;
+                          setSelectedGroup(groupId);
+                          if (groupId) {
+                            fetchGroupProgressData(groupId);
+                          } else {
+                            setGroupProgress(null);
+                          }
+                        }}
+                        className="w-full bg-slate-700 text-white p-2 rounded border border-slate-600"
+                      >
+                        <option value="">None</option>
+                        {groups.map(g => <option key={g._id} value={g._id}>{g.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-slate-700 p-4 rounded border border-slate-600">
+                      <h4 className="text-white font-medium mb-2">Your Progress</h4>
+                      <HabitTrendChart data={progressSummary?.habitStreaks || []} />
+                    </div>
+                    <div className="bg-slate-700 p-4 rounded border border-slate-600">
+                      <h4 className="text-white font-medium mb-2">Friend's Progress</h4>
+                      {selectedFriend && friendProgress ? (
+                        <HabitTrendChart data={friendProgress.habitStreaks || []} />
+                      ) : (
+                        <div className="text-slate-400 text-sm">Select a friend to view progress</div>
+                      )}
+                    </div>
+                    <div className="bg-slate-700 p-4 rounded border border-slate-600">
+                      <h4 className="text-white font-medium mb-2">Group Progress</h4>
+                      {selectedGroup && groupProgress ? (
+                        <HabitTrendChart data={groupProgress.habitStreaks || []} />
+                      ) : (
+                        <div className="text-slate-400 text-sm">Select a group to view progress</div>
+                      )}
+                    </div>
+                    <div className="bg-slate-700 p-4 rounded border border-slate-600">
+                      <h4 className="text-white font-medium mb-2">All Users Progress</h4>
+                      <HabitTrendChart data={allUsersProgress?.habitStreaks || []} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="col-span-1">
+                <CalendarHeatmap />
               </div>
             </>
           )}
@@ -246,16 +305,16 @@ const Dashboard = () => {
                 <div>
                   <h3 className="text-lg font-bold text-green-400 mb-2">Followers</h3>
                   <ul className="space-y-2">
-                    {followers.map(f => (
-                      <li key={f} className="bg-slate-700 rounded-lg px-4 py-2 text-white">{f}</li>
+                    {friends.map(f => (
+                      <li key={f._id} className="bg-slate-700 rounded-lg px-4 py-2 text-white">{f.name}</li>
                     ))}
                   </ul>
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-red-400 mb-2">Requests</h3>
                   <ul className="space-y-2">
-                    {requests.map(r => (
-                      <li key={r} className="bg-slate-700 rounded-lg px-4 py-2 text-white">{r}</li>
+                    {friends.slice(0, 2).map(r => (
+                      <li key={r._id} className="bg-slate-700 rounded-lg px-4 py-2 text-white">{r.name}</li>
                     ))}
                   </ul>
                 </div>

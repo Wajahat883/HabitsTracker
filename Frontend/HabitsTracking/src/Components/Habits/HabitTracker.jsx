@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchLogs, saveLog } from '../../api/habits';
+import { useHabitContext } from '../../context/HabitContext';
 
 const STATUSES = ['incomplete','completed','skipped'];
 
@@ -9,7 +10,8 @@ function nextStatus(current) {
   return 'incomplete';
 }
 
-export default function HabitTracker({ habit }) {
+export default function HabitTracker() {
+  const { selectedHabit } = useHabitContext();
   const [logs, setLogs] = useState({});
   const [loading, setLoading] = useState(false);
   const [range] = useState(() => {
@@ -21,19 +23,19 @@ export default function HabitTracker({ habit }) {
   });
 
   useEffect(() => {
-    if (!habit) return;
+    if (!selectedHabit) return;
     (async () => {
       setLoading(true);
       try {
-        const data = await fetchLogs(habit._id, range);
+        const data = await fetchLogs(selectedHabit._id, range);
         const map = {}; data.forEach(l => { map[l.date] = l; });
         setLogs(map);
   } catch { /* handle silently */ }
       finally { setLoading(false); }
     })();
-  }, [habit, range]);
+  }, [selectedHabit, range]);
 
-  if (!habit) return <div className="text-slate-400 text-sm">Select a habit to track.</div>;
+  if (!selectedHabit) return <div className="text-slate-400 text-sm">Select a habit to track.</div>;
 
   const days = [];
   const start = new Date(range.from + 'T00:00:00Z');
@@ -47,7 +49,7 @@ export default function HabitTracker({ habit }) {
     const status = nextStatus(current);
     // optimistic
     setLogs(prev => ({ ...prev, [dateStr]: { ...(prev[dateStr]||{}), date: dateStr, status } }));
-    try { await saveLog(habit._id, { date: dateStr, status }); }
+    try { await saveLog(selectedHabit._id, { date: dateStr, status }); }
     catch { /* revert */ }
   };
 

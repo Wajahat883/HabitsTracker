@@ -6,6 +6,7 @@ import authRoutes from "../Routes/auth.routes.js";  // 👈 import
 import profileRoutes from "../Routes/profile.routes.js";
 import habitRoutes from "../Routes/habit.routes.js";
 import progressRoutes from "../Routes/progress.routes.js";
+import groupRoutes from "../Routes/group.routes.js";
 import { errorHandler } from '../Middleware/authMiddleware.js';
 
 
@@ -15,7 +16,7 @@ const app = express();
 
 
 app.use(cors({
-    origin: "http://localhost:5173",
+    origin: "http://localhost:5175",
     credentials: true
 }));
 
@@ -29,6 +30,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/user", profileRoutes);
 app.use("/api/habits", habitRoutes);
 app.use("/api/progress", progressRoutes);
+app.use("/api/groups", groupRoutes);
 app.use(errorHandler);
 
 export default app;

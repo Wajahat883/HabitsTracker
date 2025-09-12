@@ -7,6 +7,11 @@ const habitSchema = new mongoose.Schema({
         required: true,
         index: true
     },
+    group: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Group",
+        index: true
+    }, // optional for group habits
     title: {
         type: String,
         required: true,
@@ -48,6 +53,7 @@ const habitSchema = new mongoose.Schema({
 
 habitSchema.index({ user: 1, isArchived: 1 });
 habitSchema.index({ user: 1, frequencyType: 1 });
+habitSchema.index({ group: 1 });
 
 const Habit = mongoose.model("Habit", habitSchema);
 export default Habit;

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { createHabit, updateHabit } from '../../api/habits';
+import { createGroupHabit } from '../../api/groups';
+import { useHabitContext } from '../../context/HabitContext';
 
 const defaultForm = {
   title: '',
@@ -7,11 +9,13 @@ const defaultForm = {
   frequencyType: 'daily',
   daysOfWeek: [],
   timesPerPeriod: 1,
-  colorTag: '#3b82f6'
+  colorTag: '#3b82f6',
+  groupId: ''
 };
 
-export default function HabitForm({ onCreated, onUpdated, editing }) {
-  const [form, setForm] = useState(editing ? { ...defaultForm, ...editing } : defaultForm);
+export default function HabitForm() {
+  const { groups, setHabits, setEditingHabit, setSelectedHabit, editingHabit } = useHabitContext();
+  const [form, setForm] = useState(editingHabit ? { ...defaultForm, ...editingHabit } : defaultForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -28,12 +32,15 @@ export default function HabitForm({ onCreated, onUpdated, editing }) {
     e.preventDefault();
     setLoading(true); setError('');
     try {
-      if (editing) {
-        const updated = await updateHabit(editing._id, form);
-        onUpdated && onUpdated(updated);
+      if (editingHabit) {
+        const updated = await updateHabit(editingHabit._id, form);
+        setHabits(prev => prev.map(ph => ph._id === updated._id ? updated : ph));
+        setEditingHabit(null);
+        setSelectedHabit(updated);
       } else {
-        const created = await createHabit(form);
-        onCreated && onCreated(created);
+        const created = form.groupId ? await createGroupHabit(form.groupId, form) : await createHabit(form);
+        setHabits(prev => [created, ...prev]);
+        setSelectedHabit(created);
         setForm(defaultForm);
       }
     } catch (err) {
@@ -43,7 +50,7 @@ export default function HabitForm({ onCreated, onUpdated, editing }) {
 
   return (
     <form onSubmit={submit} className="space-y-4 bg-slate-800 p-4 rounded-lg border border-slate-700">
-      <h3 className="text-lg font-semibold text-blue-300">{editing ? 'Edit Habit' : 'New Habit'}</h3>
+      <h3 className="text-lg font-semibold text-blue-300">{editingHabit ? 'Edit Habit' : 'New Habit'}</h3>
       {error && <div className="text-red-400 text-sm">{error}</div>}
       <div>
         <label className="block text-sm text-slate-300 mb-1">Title</label>
@@ -81,9 +88,16 @@ export default function HabitForm({ onCreated, onUpdated, editing }) {
         <label className="block text-sm text-slate-300 mb-1">Color</label>
         <input type="color" name="colorTag" value={form.colorTag} onChange={handleChange} className="h-10 w-16 p-1 bg-slate-700 rounded" />
       </div>
+      <div>
+        <label className="block text-sm text-slate-300 mb-1">Group (optional)</label>
+        <select name="groupId" value={form.groupId} onChange={handleChange} className="w-full bg-slate-700 text-white rounded p-2">
+          <option value="">Individual Habit</option>
+          {groups.map(g => <option key={g._id} value={g._id}>{g.name}</option>)}
+        </select>
+      </div>
       <div className="flex justify-end gap-2">
-        {editing && <button type="button" onClick={() => onUpdated(null)} className="px-3 py-2 text-sm bg-slate-600 rounded text-white">Cancel</button>}
-        <button disabled={loading} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded">{loading ? 'Saving...' : editing ? 'Update' : 'Create'}</button>
+        {editingHabit && <button type="button" onClick={() => setEditingHabit(null)} className="px-3 py-2 text-sm bg-slate-600 rounded text-white">Cancel</button>}
+        <button disabled={loading} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded">{loading ? 'Saving...' : editingHabit ? 'Update' : 'Create'}</button>
       </div>
     </form>
   );

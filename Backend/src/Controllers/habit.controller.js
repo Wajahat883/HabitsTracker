@@ -38,8 +38,13 @@ export const listHabits = async (req, res, next) => {
     const { archived } = req.query;
     const filter = { user: req.user.userId };
     if (archived === 'true') filter.isArchived = true; else filter.isArchived = false;
-    const habits = await Habit.find(filter).sort({ createdAt: -1 });
-    return res.json(new ApiResponse(200, habits));
+    const userHabits = await Habit.find(filter).sort({ createdAt: -1 });
+    // Also include group habits where user is member
+    const groups = await Group.find({ members: req.user.userId });
+    const groupIds = groups.map(g => g._id);
+    const groupHabits = await Habit.find({ group: { $in: groupIds }, isArchived: false }).sort({ createdAt: -1 });
+    const allHabits = [...userHabits, ...groupHabits];
+    return res.json(new ApiResponse(200, allHabits));
   } catch (e) { next(e); }
 };
 
