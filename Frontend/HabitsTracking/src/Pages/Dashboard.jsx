@@ -4,6 +4,10 @@ import { useHabitContext } from "../context/HabitContext";
 import HabitForm from "../Components/Habits/HabitForm";
 import HabitList from "../Components/Habits/HabitList";
 import HabitTracker from "../Components/Habits/HabitTracker";
+import NotificationBell from "../Components/Notifications/NotificationBell";
+import UserSearch from "../Components/Friends/UserSearch";
+import AllUsersList from "../Components/Friends/AllUsersList";
+import SocialFeaturesTest from "../Components/Common/SocialFeaturesTest";
 import { Bar, Doughnut } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -15,7 +19,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { FaHome, FaListAlt, FaSun, FaRegSun, FaMoon, FaPlus, FaInfinity, FaPause, FaCreditCard, FaCog, FaLink, FaUserFriends } from "react-icons/fa";
+import { FaHome, FaListAlt, FaSun, FaRegSun, FaMoon, FaPlus, FaInfinity, FaPause, FaCreditCard, FaCog, FaLink, FaUserFriends, FaCheckCircle } from "react-icons/fa";
 import image from '../assets/logo-habit-tracker.png';
 import ProgressSummary from "../Components/Progress/ProgressSummary";
 import HabitTrendChart from "../Components/Progress/HabitTrendChart";
@@ -39,6 +43,7 @@ const sidebarItems = [
   { label: "App Settings", icon: <FaCog /> },
   { label: "Resources", icon: <FaLink /> },
   { label: "Friends", icon: <FaUserFriends /> },
+  { label: "Status", icon: <FaCheckCircle /> },
 ];
 
 // Example data for user, friend, and comparison
@@ -196,6 +201,7 @@ const Dashboard = () => {
           <span className="text-xl font-bold text-blue-400 tracking-tight">HabitTracker</span>
         </div>
         <div className="flex items-center gap-4">
+          <NotificationBell />
           <span className="text-white font-semibold">Guest</span>
           <div className="h-10 w-10 rounded-full bg-blue-700 flex items-center justify-center text-white font-bold">G</div>
         </div>
@@ -534,16 +540,36 @@ const Dashboard = () => {
           {/* Friends Section */}
           {activeSection === "Friends" && (
             <>
+              {/* Current Friends List */}
               <div className="col-span-1">
                 <FriendsList />
               </div>
+              
+              {/* Invite by Email/Link */}
               <div className="col-span-1">
                 <InviteFriends onInviteSent={() => {
                   // Refresh friends list when invite is sent
                   loadHabits(); // This also loads friends in the context
                 }} />
               </div>
+              
+              {/* Search Existing Users */}
+              <div className="col-span-1">
+                <UserSearch />
+              </div>
+              
+              {/* All Users List with Pagination */}
+              <div className="col-span-1">
+                <AllUsersList />
+              </div>
             </>
+          )}
+
+          {/* Status Section - Implementation Summary */}
+          {activeSection === "Status" && (
+            <div className="col-span-1 md:col-span-2">
+              <SocialFeaturesTest />
+            </div>
           )}
       </main>
     </div>

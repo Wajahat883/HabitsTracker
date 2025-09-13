@@ -27,3 +27,15 @@ export function acceptInvite(inviteId) {
 export function removeFriend(id) {
   return fetch(`${API_BASE}/api/friends/${id}`, { method: 'DELETE', credentials: 'include' }).then(r => { if(!r.ok) throw new Error('Request failed'); return r.json(); }).then(j=>j.data);
 }
+
+export function fetchFriendRequests() {
+  return jsonGet('/api/friends/requests');
+}
+
+export function acceptFriendRequest(requestId) {
+  return jsonPost('/api/friends/requests/accept', { requestId });
+}
+
+export function rejectFriendRequest(requestId) {
+  return jsonPost('/api/friends/requests/reject', { requestId });
+}

@@ -1,13 +1,13 @@
-// app.js
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import authRoutes from "../Routes/auth.routes.js";  // 👈 import
+import authRoutes from "../Routes/auth.routes.js";
 import profileRoutes from "../Routes/profile.routes.js";
 import habitRoutes from "../Routes/habit.routes.js";
 import progressRoutes from "../Routes/progress.routes.js";
 import groupRoutes from "../Routes/group.routes.js";
 import friendRoutes from "../Routes/friend.routes.js";
+import notificationRoutes from "../Routes/notification.routes.js";
 import { errorHandler } from '../Middleware/authMiddleware.js';
 
 
@@ -33,6 +33,7 @@ app.use("/api/habits", habitRoutes);
 app.use("/api/progress", progressRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/friends", friendRoutes);
+app.use("/api/notifications", notificationRoutes);
 app.use(errorHandler);
 
 export default app;

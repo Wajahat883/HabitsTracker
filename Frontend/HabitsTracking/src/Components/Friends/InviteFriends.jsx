@@ -53,11 +53,21 @@ export default function InviteFriends({ onInviteSent }) {
         <h3 className="text-white font-semibold">Invite Friends</h3>
       </div>
 
+      <div className="mb-4 p-4 bg-slate-700 rounded-lg">
+        <h4 className="text-white font-medium mb-2">How Friend Invites Work:</h4>
+        <ul className="text-slate-300 text-sm space-y-1">
+          <li>• Enter your friend's email address</li>
+          <li>• System will create an invite link</li>
+          <li>• Share the link with your friend</li>
+          <li>• They can join and become your habit buddy!</li>
+        </ul>
+      </div>
+
       <form onSubmit={handleInvite} className="space-y-4">
         <div>
           <label className="block text-slate-300 text-sm mb-2">
             <FaEnvelope className="inline mr-2" />
-            Email Address
+            Friend's Email Address
           </label>
           <input
             type="email"
@@ -101,28 +111,39 @@ export default function InviteFriends({ onInviteSent }) {
       )}
 
       {inviteLink && (
-        <div className="mt-4 p-3 bg-slate-700 border border-slate-600 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <FaLink className="text-blue-400" />
-            <span className="text-slate-300 text-sm font-medium">Invite Link</span>
+        <div className="mt-4 p-4 bg-green-900/20 border border-green-700 rounded-lg">
+          <div className="flex items-center gap-2 mb-3">
+            <FaLink className="text-green-400" />
+            <span className="text-green-300 font-medium">Invite Link Ready!</span>
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={inviteLink}
-              readOnly
-              className="flex-1 p-2 bg-slate-600 border border-slate-500 rounded text-slate-200 text-sm"
-            />
-            <button
-              onClick={copyLink}
-              className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-              title="Copy Link"
-            >
-              <FaCopy />
-            </button>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={inviteLink}
+                readOnly
+                className="flex-1 p-3 bg-slate-600 text-white rounded-lg border border-slate-500 text-sm font-mono"
+              />
+              <button
+                onClick={copyLink}
+                className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <FaCopy />
+                Copy
+              </button>
+            </div>
+            <div className="bg-slate-700 p-3 rounded-lg">
+              <h4 className="text-white font-medium mb-2">How to share:</h4>
+              <ul className="text-slate-300 text-sm space-y-1">
+                <li>• Copy the link above</li>
+                <li>• Send it via WhatsApp, email, or any messaging app</li>
+                <li>• Your friend clicks the link to join</li>
+                <li>• You both become habit buddies! 🎉</li>
+              </ul>
+            </div>
           </div>
-          <p className="text-slate-400 text-xs mt-2">
-            Share this link with your friend so they can accept your invitation.
+          <p className="text-green-400 text-xs mt-3 text-center">
+            ✨ This link will allow <strong>{email}</strong> to become your habit tracking partner!
           </p>
         </div>
       )}

@@ -25,6 +25,49 @@ const generateTokens = (userId) => {
   return { accessToken, refreshToken };
 };
 
+// Get all users (for finding friends)
+export const getAllUsers = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20 } = req.query;
+  
+  const users = await User.find({ _id: { $ne: req.user.userId } })
+    .select('username email profilePicture createdAt')
+    .sort({ createdAt: -1 })
+    .limit(limit * 1)
+    .skip((page - 1) * limit);
+  
+  const total = await User.countDocuments({ _id: { $ne: req.user.userId } });
+  
+  return res.json(new ApiResponse(200, {
+    users,
+    totalPages: Math.ceil(total / limit),
+    currentPage: page,
+    total
+  }, 'All users fetched'));
+});
+
+// Search users by email or username
+export const searchUsers = asyncHandler(async (req, res) => {
+  const { query } = req.query;
+  
+  if (!query || query.length < 2) {
+    return res.json(new ApiResponse(200, [], 'No search query provided'));
+  }
+  
+  const users = await User.find({
+    $and: [
+      { _id: { $ne: req.user.userId } }, // Exclude current user
+      {
+        $or: [
+          { email: { $regex: query, $options: 'i' } },
+          { username: { $regex: query, $options: 'i' } }
+        ]
+      }
+    ]
+  }).select('username email profilePicture createdAt').limit(20);
+  
+  return res.json(new ApiResponse(200, users, 'Users found'));
+});
+
 // Remove sensitive data
 const sanitizeUser = (user) => {
   const u = user.toObject();

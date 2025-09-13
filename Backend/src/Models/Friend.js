@@ -9,7 +9,11 @@ const friendSchema = new mongoose.Schema({
     friend: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
-        required: true
+        required: false // Allow null for invite links
+    },
+    inviteEmail: {
+        type: String,
+        required: false // Store email for pending invites
     },
     status: {
         type: String,
