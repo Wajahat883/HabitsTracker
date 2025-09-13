@@ -9,16 +9,18 @@ import { HabitProvider } from "./context/HabitContext";
 function App() {
   return (
     <ChartDataProvider>
-      <HabitProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="*" element={<Navigate to="/login" />} />
-          </Routes>
-        </Router>
-      </HabitProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/dashboard" element={
+            <HabitProvider>
+              <Dashboard />
+            </HabitProvider>
+          } />
+          <Route path="*" element={<Navigate to="/login" />} />
+        </Routes>
+      </Router>
     </ChartDataProvider>
   );
 }

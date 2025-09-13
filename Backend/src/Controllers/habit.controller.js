@@ -1,5 +1,6 @@
 import Habit from "../Models/Habit.js";
 import HabitLog from "../Models/HabitLog.js";
+import Group from "../Models/Group.js";
 import ApiError from "../utils/ApiErros.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 

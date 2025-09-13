@@ -84,27 +84,117 @@ Quality / Cross-Cutting (2 SP)
 - API documented and referenced in frontend code comments.
 - No critical eslint errors; components responsive down to 360px width.
 
-## Epic 3: Progress Visualization (6 SP)
+## Epic 3: Progress Visualization (8 SP)
+### Goal
+Give users clear, actionable insight into their habits using charts, streaks, and heatmaps so they can understand trends and maintain motivation.
+
 ### User Stories
-- As a user, I want to see my progress in charts and streaks.
+- As a user, I want a summary dashboard showing completion %, average streak, and longest streak.
+- As a user, I want a calendar heatmap showing days I completed habits.
+- As a user, I want per-habit trend charts (last N days) and an aggregated completion chart.
 
-#### Tasks
-- [ ] Design progress visualization UI (1 SP)
-- [ ] Integrate chart library (1 SP)
-- [ ] Implement streaks logic (2 SP)
-- [ ] Connect frontend to progress data (1 SP)
-- [ ] Test visualization features (1 SP)
+### Data & API Contract
+- GET /api/progress/summary?range=30d&userId={id} -> { overallCompletion, activeHabits, avgStreak, longestStreak, habitStreaks: [{habitId,title,streak}] }
+- GET /api/progress/heatmap?year=2025&userId={id} -> [{date: 'YYYY-MM-DD', count: n}, ...]
+- GET /api/progress/habit/:id/trend?days=30 -> [{date:'YYYY-MM-DD', completed:0|1|count}, ...]
 
-## Epic 4: Friends & Social Features (8 SP)
+Data shapes (frontend contract):
+- ProgressSummary: { overallCompletion: number, activeHabits: number, avgStreak: number, longestStreak: number, habitStreaks: Array }
+- Heatmap: Array<{date:string, count:number}>
+- HabitTrend: Array<{date:string, completedCount:number}>
+
+### Acceptance Criteria
+- Dashboard loads summary, heatmap, and a small list of top/bottom habits within 1s for typical local dev data.
+- Heatmap shows correct counts for completed logs for the selected year.
+- Per-habit trend shows a line/bar for the past N days; toggling N (7/30/90) updates chart.
+- All API endpoints require auth and return 401 for unauthenticated requests.
+- Charts display graceful states: loading spinner, "no data" message, and error toast.
+
+### Frontend (3 SP)
+- [ ] UI/UX: wireframe small dashboard panel + modal drilldown (0.5 SP)
+- [ ] Implement `ProgressSummary` component (fetch + display cards) (0.75 SP)
+- [ ] Implement `CalendarHeatmap` component (reusable, accessible) (0.75 SP)
+- [ ] Implement `HabitTrendChart` component with range selector (0.75 SP)
+
+### Backend (3 SP)
+- [ ] Implement summary aggregation endpoint (efficient queries, index usage) (1 SP)
+- [ ] Implement heatmap endpoint (group by date, return sparse map) (1 SP)
+- [ ] Implement per-habit trend endpoint (date range fill and upsert-safe aggregation) (1 SP)
+
+### Quality / Cross-cutting (2 SP)
+- [ ] Unit tests for aggregation functions (streak calculations, date range fill) (0.75 SP)
+- [ ] Integration test (create habit(s) -> add logs -> query summary/heatmap) (0.75 SP)
+- [ ] Performance check for 90-day range (bench and memoize if needed) (0.5 SP)
+
+### Edge cases
+- No habits -> show friendly CTA to add a habit.
+- Sparse logs -> heatmap should render gaps, not crash.
+- Multiple logs per day -> aggregate counts correctly (or normalize to completed boolean per design).
+
+### Risks & Mitigation
+- Large user data sets: enforce default window (30/90 days) and paginate per-habit data.
+- Timezones: store and aggregate by UTC date-string; client maps to local display.
+
+### Definition of Done
+- Endpoints implemented and documented in the repo README.
+- Frontend components integrated into `Dashboard` and working with real API.
+- Tests for critical aggregations pass.
+
+
+## Epic 4: Friends & Social Features (10 SP)
+### Goal
+Enable lightweight social features so users can connect, share progress (opt-in), and compare with friends while preserving privacy controls.
+
 ### User Stories
-- As a user, I want to add friends, view their habits, and compare progress.
+- As a user, I want to send/accept friend requests and manage my friends list.
+- As a user, I want to view a friend's public habits and a simplified progress summary (if they opt-in).
+- As a user, I want to invite friends by email or by sharing an invite link.
 
-#### Tasks
-- [ ] Design friends management UI (1 SP)
-- [ ] Implement invite/add friend (email/link) (2 SP)
-- [ ] Backend endpoints for friends (2 SP)
-- [ ] View friends' habits/progress (2 SP)
-- [ ] Compare progress logic (1 SP)
+### Data & API Contract
+- POST /api/friends/invite { email } -> create invite record / send email (or return link in dev)
+- POST /api/friends/accept { inviteId } -> make friendship relation
+- GET /api/friends -> list friends (id, name, avatar, friendshipStatus)
+- GET /api/friends/:id/habits -> list friend's public/visible habits
+- GET /api/friends/:id/progress?range=30d -> friend's public progress summary (respect privacy)
+- DELETE /api/friends/:id -> remove friend
+
+Privacy contract: a user can set habit visibility to {private, friends, public}. Only habits with visibility=friends or public are returned to friends; progress endpoints obey the same visibility.
+
+### Acceptance Criteria
+- Invite flow: creating an invite stores a server record and returns a shareable URL in dev mode.
+- Accepting an invite establishes friendship; both users appear in each other's friend list.
+- Privacy respected: requesting a friend's habits/progress returns 403 if not permitted.
+- Friend removal revokes access immediately.
+
+### Frontend (4 SP)
+- [ ] Design friends management screens (list, search, pending invites) (0.5 SP)
+- [ ] Implement `FriendsList` component with friend cards and actions (1 SP)
+- [ ] Implement `InviteFriends` component (email input + copy link) (0.75 SP)
+- [ ] Integrate friends' habit & progress views into `Dashboard` as a toggle/tab (1 SP)
+- [ ] Add toast/error handling and loading states across flows (0.75 SP)
+
+### Backend (4 SP)
+- [ ] Mongoose Friend/Invite models + indexes (0.5 SP)
+- [ ] Endpoints: invite, accept, list, get habits, remove (2 SP)
+- [ ] Privacy checks middleware (0.75 SP)
+- [ ] Email sending stub (dev) and rate-limit invites (0.75 SP)
+
+### Quality / Cross-cutting (2 SP)
+- [ ] Unit tests for invite/accept/remove logic and privacy rules (1 SP)
+- [ ] Integration tests: invite -> accept -> fetch friend data -> remove (1 SP)
+
+### Edge cases
+- Repeated invites to same email -> idempotent response with pending state.
+- Accept invite for already-friends -> return 409 or idempotent success.
+- Deleting a user -> cascade or mark friendships inactive.
+
+### Risks & Mitigation
+- Abuse (spam invites): rate-limit invites and add simple abuse heuristics.
+- Privacy leakage: implement strict server-side checks and tests.
+
+### Definition of Done
+- Friend invites, accept, list, view habits, and privacy enforcement are implemented end-to-end with tests and documented API.
+
 
 ## Epic 5: Leaderboard & Motivational Quotes (5 SP)
 ### User Stories

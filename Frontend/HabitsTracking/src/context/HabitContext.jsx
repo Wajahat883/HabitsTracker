@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { fetchHabits } from '../api/habits';
 import { fetchProgressSummary } from '../api/progress';
 import { fetchGroups, fetchGroupProgress, fetchAllUsersProgress, fetchFriendProgress } from '../api/groups';
+import { fetchFriends } from '../api/friends';
 
 const HabitContext = createContext();
 
@@ -19,7 +20,7 @@ export const HabitProvider = ({ children }) => {
   const [groupProgress, setGroupProgress] = useState(null);
   const [allUsersProgress, setAllUsersProgress] = useState([]);
   const [progressSummary, setProgressSummary] = useState(null);
-  const [friends, setFriends] = useState([{ _id: '1', name: 'Alice' }, { _id: '2', name: 'Bob' }]); // Dummy for now
+  const [friends, setFriends] = useState([]);
 
   const loadHabits = async () => {
     setHabitLoading(true);
@@ -75,6 +76,16 @@ export const HabitProvider = ({ children }) => {
     loadProgress();
     loadGroups();
     loadAllUsers();
+    // load friends
+    (async () => {
+      try {
+        const f = await fetchFriends();
+        setFriends(f || []);
+      } catch (err) {
+        console.error('Failed to fetch friends:', err);
+        setFriends([]);
+      }
+    })();
   }, []);
 
   const fetchFriendProgressData = async (friendId) => {

@@ -71,6 +71,10 @@ export const groupProgress = async (req, res, next) => {
 
 export const allUsersProgress = async (req, res, next) => {
   try {
+    const { range = '30d' } = req.query;
+    const days = parseInt(range) || 30;
+    const endDate = todayStr();
+    const startDate = new Date(Date.now() - (days-1)*86400000).toISOString().slice(0,10);
     // Simplified: get all users' summary (in real app, limit or paginate)
     const users = await User.find({}).select('_id name');
     const summaries = [];

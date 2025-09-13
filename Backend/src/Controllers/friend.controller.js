@@ -1,0 +1,93 @@
+import Friend from "../Models/Friend.js";
+import User from "../Models/User.js";
+import ApiError from "../utils/ApiErros.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+
+// Send an invite (in dev we just create a pending Friend doc)
+export const inviteFriend = async (req, res, next) => {
+  try {
+    const { email, userId } = req.body;
+    // allow invite by email or userId; prefer resolving email to user if exists
+    let targetUser = null;
+    if (userId) targetUser = await User.findById(userId);
+    else if (email) targetUser = await User.findOne({ email });
+
+    if (!targetUser) {
+      // In dev return a shareable token/link instead of sending email
+      const invite = await Friend.create({ user: req.user.userId, friend: null, status: 'pending' });
+      return res.status(201).json(new ApiResponse(201, { inviteId: invite._id, link: `/invite/${invite._id}` }, 'Invite created (dev)'));
+    }
+
+    // prevent inviting self
+    if (targetUser._id.equals(req.user.userId)) return next(new ApiError(400, 'Cannot invite yourself'));
+
+    // check existing relationship
+    const existing = await Friend.findOne({ user: req.user.userId, friend: targetUser._id });
+    if (existing) return res.json(new ApiResponse(200, existing, 'Invite already exists'));
+
+    const friend = await Friend.create({ user: req.user.userId, friend: targetUser._id, status: 'pending' });
+    return res.status(201).json(new ApiResponse(201, friend, 'Invite created'));
+  } catch (e) { next(e); }
+};
+
+export const acceptInvite = async (req, res, next) => {
+  try {
+    const { inviteId } = req.body;
+    const invite = await Friend.findById(inviteId);
+    if (!invite) return next(new ApiError(404, 'Invite not found'));
+    // accept only if current user is the recipient
+    if (!invite.friend || !invite.friend.equals(req.user.userId)) return next(new ApiError(403, 'Not allowed'));
+    invite.status = 'accepted';
+    await invite.save();
+    // create reciprocal relationship
+    const reciprocal = await Friend.findOneAndUpdate(
+      { user: req.user.userId, friend: invite.user },
+      { user: req.user.userId, friend: invite.user, status: 'accepted' },
+      { upsert: true, new: true }
+    );
+    // also add to users' friends array
+    await User.findByIdAndUpdate(req.user.userId, { $addToSet: { friends: invite.user } });
+    await User.findByIdAndUpdate(invite.user, { $addToSet: { friends: req.user.userId } });
+    return res.json(new ApiResponse(200, { invite, reciprocal }, 'Invite accepted'));
+  } catch (e) { next(e); }
+};
+
+export const listFriends = async (req, res, next) => {
+  try {
+    // list accepted friendships where user is either the requester or recipient
+    const outgoing = await Friend.find({ user: req.user.userId, status: 'accepted' }).populate('friend', 'username email profilePicture');
+    const incoming = await Friend.find({ friend: req.user.userId, status: 'accepted' }).populate('user', 'username email profilePicture');
+    const friends = [];
+    outgoing.forEach(o => friends.push({ _id: o.friend._id, name: o.friend.username, email: o.friend.email, profilePicture: o.friend.profilePicture }));
+    incoming.forEach(i => friends.push({ _id: i.user._id, name: i.user.username, email: i.user.email, profilePicture: i.user.profilePicture }));
+    return res.json(new ApiResponse(200, friends));
+  } catch (e) { next(e); }
+};
+
+export const removeFriend = async (req, res, next) => {
+  try {
+    const friendId = req.params.id;
+    // remove both directions
+    await Friend.deleteMany({ $or: [ { user: req.user.userId, friend: friendId }, { user: friendId, friend: req.user.userId } ] });
+    await User.findByIdAndUpdate(req.user.userId, { $pull: { friends: friendId } });
+    await User.findByIdAndUpdate(friendId, { $pull: { friends: req.user.userId } });
+    return res.json(new ApiResponse(200, null, 'Friend removed'));
+  } catch (e) { next(e); }
+};
+
+export const getFriendHabits = async (req, res, next) => {
+  try {
+    const friendId = req.params.id;
+    // check privacy: only return if public or friends and are friends
+    const friendUser = await User.findById(friendId).select('privacy');
+    if (!friendUser) return next(new ApiError(404, 'User not found'));
+    const isFriend = await Friend.findOne({ user: req.user.userId, friend: friendId, status: 'accepted' }) || await Friend.findOne({ user: friendId, friend: req.user.userId, status: 'accepted' });
+    if (friendUser.privacy === 'private' && !isFriend) return next(new ApiError(403, 'Not allowed'));
+    const Habit = (await import('../Models/Habit.js')).default;
+    const visibility = friendUser.privacy === 'public' ? {} : { $in: ['public', 'friends'] };
+    const habits = await Habit.find({ user: friendId, isArchived: false });
+    // filter by habit-level privacy if present (assume habit has visibility field)
+    const filtered = habits.filter(h => !h.visibility || h.visibility === 'public' || (h.visibility === 'friends' && isFriend));
+    return res.json(new ApiResponse(200, filtered));
+  } catch (e) { next(e); }
+};

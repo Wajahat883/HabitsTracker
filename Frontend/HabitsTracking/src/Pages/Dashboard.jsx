@@ -21,6 +21,8 @@ import ProgressSummary from "../Components/Progress/ProgressSummary";
 import HabitTrendChart from "../Components/Progress/HabitTrendChart";
 import CalendarHeatmap from "../Components/Progress/CalendarHeatmap";
 import GroupForm from "../Components/Groups/GroupForm";
+import FriendsList from "../Components/Friends/FriendsList";
+import InviteFriends from "../Components/Friends/InviteFriends";
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
 const sidebarItems = [
@@ -100,35 +102,90 @@ const Dashboard = () => {
     fetchGroupProgressData,
   } = useHabitContext();
 
-  // Update charts with real data
+  // Update charts with real data including friends and groups
   useEffect(() => {
     if (!progressSummary) return;
     const habitStreaks = progressSummary.habitStreaks || [];
-    const labels = habitStreaks.map(h => h.title);
-    const data = habitStreaks.map(h => h.streak);
+    const userLabels = habitStreaks.map(h => h.title);
+    const userData = habitStreaks.map(h => h.streak);
 
-    // Update friendData to show habit streaks
-    setFriendData({
-      labels,
-      datasets: [{
-        label: 'Habit Streaks',
-        data,
+    // Prepare datasets for comparison chart
+    const datasets = [
+      {
+        label: 'Your Streaks',
+        data: userData,
         backgroundColor: '#38bdf8',
         borderRadius: 8
-      }]
+      }
+    ];
+
+    // Add friend data if available
+    if (friendProgress?.habitStreaks) {
+      const friendLabels = friendProgress.habitStreaks.map(h => h.title);
+      const friendData = friendProgress.habitStreaks.map(h => h.streak);
+      datasets.push({
+        label: 'Friend\'s Streaks',
+        data: friendData,
+        backgroundColor: '#f59e0b',
+        borderRadius: 8
+      });
+    }
+
+    // Add group data if available
+    if (groupProgress?.habitStreaks) {
+      const groupLabels = groupProgress.habitStreaks.map(h => h.title);
+      const groupData = groupProgress.habitStreaks.map(h => h.streak);
+      datasets.push({
+        label: 'Group Streaks',
+        data: groupData,
+        backgroundColor: '#10b981',
+        borderRadius: 8
+      });
+    }
+
+    // Update friendData chart to show comparison
+    const friendDatasets = [
+      {
+        label: 'Your Streaks',
+        data: userData,
+        backgroundColor: '#38bdf8',
+        borderRadius: 8
+      }
+    ];
+
+    // Add friend data to second chart if selected
+    if (selectedFriend && friendProgress?.habitStreaks) {
+      const friendData = friendProgress.habitStreaks.map(h => h.streak);
+      friendDatasets.push({
+        label: 'Friend\'s Streaks',
+        data: friendData,
+        backgroundColor: '#f59e0b',
+        borderRadius: 8
+      });
+    }
+
+    // Add group data to second chart if selected
+    if (selectedGroup && groupProgress?.habitStreaks) {
+      const groupData = groupProgress.habitStreaks.map(h => h.streak);
+      friendDatasets.push({
+        label: 'Group Streaks',
+        data: groupData,
+        backgroundColor: '#10b981',
+        borderRadius: 8
+      });
+    }
+
+    setFriendData({
+      labels: userLabels,
+      datasets: friendDatasets
     });
 
-    // Update compareData to show streaks
+    // Update compareData to show comparison with friends/groups
     setCompareData({
-      labels,
-      datasets: [{
-        label: 'Streaks',
-        data,
-        backgroundColor: '#34d399',
-        borderRadius: 8
-      }]
+      labels: userLabels, // Use your habit names as base
+      datasets: datasets
     });
-  }, [progressSummary, setFriendData, setCompareData]);
+  }, [progressSummary, friendProgress, groupProgress, selectedFriend, selectedGroup, setFriendData, setCompareData]);
 
   return (
     <div className="min-h-screen bg-slate-900">
@@ -166,35 +223,212 @@ const Dashboard = () => {
         {/* Dashboard Section */}
           {activeSection === "Dashboard" && (
             <>
+              {/* Friend Selection Control */}
+              <div className="col-span-1 md:col-span-2 bg-slate-800 rounded-xl shadow-lg p-6">
+                <h3 className="text-white font-semibold mb-4">Select Friend for Comparison</h3>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <select
+                      value={selectedFriend || ""}
+                      onChange={(e) => {
+                        const friendId = e.target.value;
+                        setSelectedFriend(friendId);
+                        if (friendId) {
+                          fetchFriendProgressData(friendId);
+                        } else {
+                          setFriendProgress(null);
+                        }
+                      }}
+                      className="w-full bg-slate-700 text-white p-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
+                    >
+                      <option value="">Select a friend to compare...</option>
+                      {friends.map(f => <option key={f._id} value={f._id}>{f.name}</option>)}
+                    </select>
+                  </div>
+                  {selectedFriend && (
+                    <button
+                      onClick={() => {
+                        setSelectedFriend(null);
+                        setFriendProgress(null);
+                      }}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Chart 1: Your Progress */}
               <div className="bg-slate-800 rounded-xl shadow-lg p-8 flex flex-col items-center justify-center">
                 <h2 className="text-2xl font-bold text-blue-300 mb-4">Your Progress</h2>
                 <div className="w-48 h-48 mb-4">
                   <Doughnut key="user-progress-doughnut" data={userProgressData} options={doughnutOptions} />
                 </div>
                 <div className="text-lg text-blue-400 font-bold">{progressSummary ? `${progressSummary.overallCompletion}% Completed` : 'Loading...'}</div>
+                <div className="mt-2 text-sm text-slate-300">
+                  Active Habits: {progressSummary?.activeHabits || 0}
+                </div>
+                <div className="text-sm text-slate-300">
+                  Avg Streak: {progressSummary?.avgStreak || 0} days
+                </div>
               </div>
+
+              {/* Chart 2: Friend's Progress (with selection) */}
               <div className="bg-slate-800 rounded-xl shadow-lg p-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold text-green-300">Habit Streaks</h2>
+                <h2 className="text-2xl font-bold text-yellow-300 mb-4">Friend's Progress</h2>
+                
+                {/* Friend Selection Dropdown */}
+                <div className="mb-6">
+                  <select
+                    value={selectedFriend || ""}
+                    onChange={(e) => {
+                      const friendId = e.target.value;
+                      setSelectedFriend(friendId);
+                      if (friendId) {
+                        fetchFriendProgressData(friendId);
+                      } else {
+                        setFriendProgress(null);
+                      }
+                    }}
+                    className="w-full bg-slate-700 text-white p-3 rounded-lg border border-slate-600 focus:border-yellow-500 focus:outline-none"
+                  >
+                    <option value="">Select a friend to view progress...</option>
+                    {friends.map(f => (
+                      <option key={f._id} value={f._id}>
+                        {f.name || f.username || 'Unknown Friend'}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+
+                {/* Progress Display */}
+                <div className="flex flex-col items-center justify-center">
+                  {selectedFriend && friendProgress ? (
+                    <>
+                      <div className="w-48 h-48 mb-4">
+                        <Doughnut 
+                          key="friend-progress-doughnut" 
+                          data={{
+                            labels: ['Completed', 'Remaining'],
+                            datasets: [{
+                              data: [friendProgress.overallCompletion || 0, 100 - (friendProgress.overallCompletion || 0)],
+                              backgroundColor: ['#f59e0b', '#374151'],
+                              borderWidth: 0
+                            }]
+                          }} 
+                          options={doughnutOptions} 
+                        />
+                      </div>
+                      <div className="text-lg text-yellow-400 font-bold">{friendProgress.overallCompletion || 0}% Completed</div>
+                      <div className="mt-2 text-sm text-slate-300">
+                        Active Habits: {friendProgress.activeHabits || 0}
+                      </div>
+                      <div className="text-sm text-slate-300">
+                        Avg Streak: {friendProgress.avgStreak || 0} days
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-slate-400 text-center py-8">
+                      {selectedFriend ? 'Loading friend\'s progress...' : 'Select a friend above to view their progress'}
+                      {friends.length === 0 && (
+                        <div className="mt-2 text-sm">
+                          <p>No friends added yet.</p>
+                          <p>Go to Friends section to add friends!</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+              </div>
+
+              {/* Chart 3: All Friends Progress */}
+              <div className="bg-slate-800 rounded-xl shadow-lg p-8">
+                <h2 className="text-2xl font-bold text-green-300 mb-4">All Friends Progress</h2>
                 <div className="aspect-square">
-                  <Bar key="habit-streaks-bar" data={friendData} options={chartOptions} />
+                  <Bar 
+                    key="all-friends-bar" 
+                    data={{
+                      labels: friends.map(f => f.name || 'Unknown'),
+                      datasets: [{
+                        label: 'Friend\'s Avg Streak',
+                        data: friends.map(() => Math.floor(Math.random() * 20)), // This will be replaced with real data
+                        backgroundColor: '#10b981',
+                        borderRadius: 8
+                      }]
+                    }} 
+                    options={chartOptions} 
+                  />
                 </div>
+                {friends.length === 0 && (
+                  <div className="text-slate-400 text-center py-4">
+                    No friends added yet. Add friends to see their progress here.
+                  </div>
+                )}
               </div>
-              <div className="bg-slate-800 rounded-xl shadow-lg p-8 col-span-1 md:col-span-2">
-                <h2 className="text-2xl font-bold text-purple-300 mb-4">Top Habit Streaks</h2>
+
+              {/* Chart 4: Your vs Selected Friend Comparison */}
+              <div className="bg-slate-800 rounded-xl shadow-lg p-8">
+                <h2 className="text-2xl font-bold text-purple-300 mb-4">
+                  {selectedFriend ? `You vs ${friends.find(f => f._id === selectedFriend)?.name}` : 'Select Friend for Comparison'}
+                </h2>
                 <div className="aspect-square">
-                  <Bar key="top-streaks-bar" data={compareData} options={chartOptions} />
+                  <Bar key="comparison-bar" data={compareData} options={chartOptions} />
+                </div>
+                <div className="mt-4 flex flex-wrap gap-4 justify-center">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-blue-400 rounded"></div>
+                    <span className="text-slate-300 text-sm">Your Streaks</span>
+                  </div>
+                  {selectedFriend && friendProgress && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+                      <span className="text-slate-300 text-sm">{friends.find(f => f._id === selectedFriend)?.name}'s Streaks</span>
+                    </div>
+                  )}
+                </div>
+                {!selectedFriend && (
+                  <div className="text-slate-400 text-center py-4">
+                    Select a friend above to compare your progress with theirs.
+                  </div>
+                )}
+              </div>
+              
+              {/* Quick Habit Tracker */}
+              <div className="col-span-1 md:col-span-2 bg-slate-800 rounded-xl shadow-lg p-6">
+                <h3 className="text-white font-semibold mb-4">Quick Habit Tracker</h3>
+                <p className="text-slate-400 text-sm mb-4">Select a habit to track your daily progress and see streaks in charts above</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-slate-300 text-sm mb-2">Select Habit to Track</label>
+                    <select
+                      value={selectedHabit?._id || ""}
+                      onChange={(e) => {
+                        const habitId = e.target.value;
+                        const habit = habits.find(h => h._id === habitId);
+                        setSelectedHabit(habit || null);
+                      }}
+                      className="w-full bg-slate-700 text-white p-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
+                    >
+                      <option value="">Select a habit to track...</option>
+                      {habits.map(h => <option key={h._id} value={h._id}>{h.title}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex items-end">
+                    {selectedHabit ? (
+                      <div className="text-green-400 text-sm">
+                        ✓ Tracking: <span className="font-semibold">{selectedHabit.title}</span>
+                      </div>
+                    ) : (
+                      <div className="text-slate-400 text-sm">
+                        No habit selected for tracking
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <HabitTracker />
                 </div>
               </div>
-              <div className="col-span-1">
-                <ProgressSummary />
-              </div>
-              <div className="col-span-1">
-                <HabitTrendChart habit={selectedHabit} />
-              </div>
-              <div className="col-span-1 md:col-span-2">
-                <CalendarHeatmap />
               </div>
             </>
           )}
@@ -299,27 +533,17 @@ const Dashboard = () => {
           )}
           {/* Friends Section */}
           {activeSection === "Friends" && (
-            <div className="bg-slate-800 rounded-xl shadow-lg p-8 col-span-1 md:col-span-2">
-              <h2 className="text-2xl font-bold text-blue-300 mb-6">Friends</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                  <h3 className="text-lg font-bold text-green-400 mb-2">Followers</h3>
-                  <ul className="space-y-2">
-                    {friends.map(f => (
-                      <li key={f._id} className="bg-slate-700 rounded-lg px-4 py-2 text-white">{f.name}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-red-400 mb-2">Requests</h3>
-                  <ul className="space-y-2">
-                    {friends.slice(0, 2).map(r => (
-                      <li key={r._id} className="bg-slate-700 rounded-lg px-4 py-2 text-white">{r.name}</li>
-                    ))}
-                  </ul>
-                </div>
+            <>
+              <div className="col-span-1">
+                <FriendsList />
               </div>
-            </div>
+              <div className="col-span-1">
+                <InviteFriends onInviteSent={() => {
+                  // Refresh friends list when invite is sent
+                  loadHabits(); // This also loads friends in the context
+                }} />
+              </div>
+            </>
           )}
       </main>
     </div>
