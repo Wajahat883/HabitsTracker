@@ -36,6 +36,25 @@ const Signup = () => {
       if (res.ok) {
         showToast("Signup successful! Redirecting to dashboard...", "success");
         setMessage("Signup successful!");
+        
+        // Save user data to localStorage
+        if (data.user) {
+          const userProfile = {
+            name: data.user.username || username || "User",
+            profilePicture: data.user.profilePicture || null,
+            email: data.user.email || email || null
+          };
+          localStorage.setItem('currentUser', JSON.stringify(userProfile));
+        } else {
+          // Fallback if user object not returned
+          const userProfile = {
+            name: username || "User",
+            profilePicture: null,
+            email: email || null
+          };
+          localStorage.setItem('currentUser', JSON.stringify(userProfile));
+        }
+        
         setTimeout(() => navigate("/dashboard"), 1200);
       } else {
         showToast(data.message || "Signup failed", "error");

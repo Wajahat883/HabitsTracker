@@ -57,6 +57,17 @@ const Login = () => {
       }
       if (response.ok) {
         showToast("Login successful!", "success");
+        
+        // Save user data to localStorage
+        if (data.user) {
+          const userProfile = {
+            name: data.user.username || data.user.name || "User",
+            profilePicture: data.user.profilePicture || data.user.picture || null,
+            email: data.user.email || null
+          };
+          localStorage.setItem('currentUser', JSON.stringify(userProfile));
+        }
+        
         // Fetch streak info (replace with real API call if available)
         setUserStreak(7); // Example: set streak to 7
         setStreakPopup(true);
@@ -88,6 +99,17 @@ const Login = () => {
         { withCredentials: true }
       );
       showToast("Welcome!", "success");
+      
+      // Save Google user data to localStorage
+      if (data.user) {
+        const userProfile = {
+          name: data.user.username || data.user.name || data.user.displayName || "User",
+          profilePicture: data.user.profilePicture || data.user.picture || data.user.avatar || null,
+          email: data.user.email || null
+        };
+        localStorage.setItem('currentUser', JSON.stringify(userProfile));
+      }
+      
       if (data.success || data.accessToken) {
         navigate("/dashboard");
       }

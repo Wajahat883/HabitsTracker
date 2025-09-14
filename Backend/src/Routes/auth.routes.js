@@ -29,4 +29,28 @@ router.get("/users", authMiddleware, getAllUsers);
 // Search users (protected route)
 router.get("/search", authMiddleware, searchUsers);
 
+// Get current user profile (protected route)
+router.get("/profile", authMiddleware, (req, res) => {
+  try {
+    const user = req.user;
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        profilePicture: user.profilePicture,
+        picture: user.picture,
+        avatar: user.avatar
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to fetch profile" 
+    });
+  }
+});
+
 export default router;

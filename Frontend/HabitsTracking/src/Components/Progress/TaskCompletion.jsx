@@ -63,6 +63,8 @@ export default function TaskCompletion() {
   // Save tasks to localStorage whenever tasks change
   useEffect(() => {
     localStorage.setItem('habitTracker_tasks', JSON.stringify(tasks));
+    // Dispatch custom event to notify other components
+    window.dispatchEvent(new CustomEvent('tasksUpdated'));
   }, [tasks]);
 
   const addTask = () => {
