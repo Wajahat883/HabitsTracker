@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createGroup } from '../../api/groups';
-import { useHabitContext } from '../../context/HabitContext';
+import { useHabitContext } from '../../context/useHabitContext';
 
 export default function GroupForm() {
   const { setGroups } = useHabitContext();

@@ -1,12 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import HabitContext from './HabitContextInternal';
 import { fetchHabits } from '../api/habits';
 import { fetchProgressSummary } from '../api/progress';
 import { fetchGroups, fetchGroupProgress, fetchAllUsersProgress, fetchFriendProgress } from '../api/groups';
 import { fetchFriends } from '../api/friends';
 
-const HabitContext = createContext();
-
-export const useHabitContext = () => useContext(HabitContext);
 
 export const HabitProvider = ({ children }) => {
   const [habits, setHabits] = useState([]);
@@ -21,6 +19,8 @@ export const HabitProvider = ({ children }) => {
   const [allUsersProgress, setAllUsersProgress] = useState([]);
   const [progressSummary, setProgressSummary] = useState(null);
   const [friends, setFriends] = useState([]);
+  const [habitListFilter, setHabitListFilter] = useState('active');
+  const [lastCreatedHabit, setLastCreatedHabit] = useState(null);
 
   const loadHabits = async () => {
     setHabitLoading(true);
@@ -88,6 +88,15 @@ export const HabitProvider = ({ children }) => {
     })();
   }, []);
 
+  const refreshFriends = async () => {
+    try {
+      const f = await fetchFriends();
+      setFriends(f || []);
+    } catch (err) {
+      console.error('Failed to refresh friends:', err);
+    }
+  };
+
   const fetchFriendProgressData = async (friendId) => {
     try {
       const data = await fetchFriendProgress(friendId);
@@ -120,17 +129,18 @@ export const HabitProvider = ({ children }) => {
     progressSummary,
     setProgressSummary,
     friends,
+  habitListFilter,
+  setHabitListFilter,
+  lastCreatedHabit,
+  setLastCreatedHabit,
     loadHabits,
     loadProgress,
     loadGroups,
     loadAllUsers,
     fetchFriendProgressData,
     fetchGroupProgressData,
+  refreshFriends
   };
 
-  return (
-    <HabitContext.Provider value={value}>
-      {children}
-    </HabitContext.Provider>
-  );
+  return <HabitContext.Provider value={value}>{children}</HabitContext.Provider>;
 };

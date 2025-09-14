@@ -4,24 +4,87 @@ import Group from "../Models/Group.js";
 import ApiError from "../utils/ApiErros.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
-// Utility: calculate streak for a habit based on logs and frequency
-const calculateStreak = (logs = [], frequencyType) => {
-  // logs expected sorted descending by date string YYYY-MM-DD
-  let streak = 0;
-  let prevDate = null;
-  for (const log of logs) {
-    if (log.status !== "completed") break;
-    if (!prevDate) {
-      streak = 1; prevDate = log.date; continue;
+// ---------------- Frequency / Streak Helpers ----------------
+const dateStrToDate = (s) => new Date(s + 'T00:00:00Z');
+
+function countScheduledWeeklyDaysBetween(startStr, endStr, daysOfWeek = []) {
+  if (!daysOfWeek.length) return 0;
+  const start = dateStrToDate(startStr);
+  const end = dateStrToDate(endStr);
+  let count = 0;
+  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    if (daysOfWeek.includes(d.getUTCDay())) count++;
+  }
+  return count;
+}
+
+function monthKey(d) { return d.toISOString().slice(0,7); }
+
+function computeFlexibleStreak(habit, logs, endDateStr) {
+  // logs: ALL logs for habit sorted DESC by date
+  const endDate = dateStrToDate(endDateStr);
+  if (habit.frequencyType === 'daily') {
+    let streak = 0;
+    let cursor = new Date(endDate);
+    // We'll examine days backwards until break
+    const logMap = new Map(logs.map(l => [l.date, l]));
+    while (true) {
+      const key = cursor.toISOString().slice(0,10);
+      const entry = logMap.get(key);
+      if (!entry) break; // missing -> break streak
+      if (entry.status === 'completed') streak++; else if (entry.status === 'skipped') { /* ignore skipped day but continue */ } else break;
+      // Move back a day
+      cursor.setUTCDate(cursor.getUTCDate() - 1);
     }
-    const prev = new Date(prevDate + "T00:00:00Z");
-    const cur = new Date(log.date + "T00:00:00Z");
-    const diff = (prev - cur) / 86400000; // days
-    if (diff === 1) { streak++; prevDate = log.date; }
-    else break;
+    return streak;
+  }
+  if (habit.frequencyType === 'weekly') {
+    if (!habit.daysOfWeek || habit.daysOfWeek.length === 0) return 0;
+    // Build scheduled dates <= endDate descending until break
+    const logMap = new Map(logs.map(l => [l.date, l]));
+    let streak = 0;
+    let cursor = new Date(endDate);
+    // Normalize cursor to last scheduled day <= endDate
+    let attempts = 0;
+    while (!habit.daysOfWeek.includes(cursor.getUTCDay()) && attempts < 7) { cursor.setUTCDate(cursor.getUTCDate() - 1); attempts++; }
+    if (attempts >= 7) return 0;
+    while (true) {
+      const key = cursor.toISOString().slice(0,10);
+      const entry = logMap.get(key);
+      if (!entry) break;
+      if (entry.status === 'completed') streak++; else if (entry.status === 'skipped') { /* ignore */ } else break;
+      // move cursor back to previous scheduled day
+      let moved = false;
+      for (let i = 1; i <= 7; i++) {
+        const nextCursor = new Date(cursor);
+        nextCursor.setUTCDate(nextCursor.getUTCDate() - i);
+        if (habit.daysOfWeek.includes(nextCursor.getUTCDay())) { cursor = nextCursor; moved = true; break; }
+      }
+      if (!moved) break;
+    }
+    return streak;
+  }
+  if (habit.frequencyType === 'monthly') {
+    // Streak counts consecutive months (including current) with at least one completed log.
+    const logsByMonth = logs.reduce((acc,l)=>{ if (l.status==='completed') { const m = l.date.slice(0,7); acc[m] = true; } return acc; }, {});
+    let streak = 0;
+    let cursor = new Date(endDate.getUTCFullYear(), endDate.getUTCMonth(), 1);
+    while (true) {
+      const mk = monthKey(cursor);
+      if (logsByMonth[mk]) { streak++; cursor.setUTCMonth(cursor.getUTCMonth() - 1); } else break;
+    }
+    return streak;
+  }
+  // custom or unknown fallback to daily logic over provided logs
+  let streak = 0; let prevDate = null;
+  for (const log of logs) {
+    if (log.status !== 'completed') break;
+    if (!prevDate) { streak = 1; prevDate = log.date; continue; }
+    const prev = dateStrToDate(prevDate); const cur = dateStrToDate(log.date);
+    const diff = (prev - cur) / 86400000; if (diff === 1) { streak++; prevDate = log.date; } else break;
   }
   return streak;
-};
+}
 
 export const createHabit = async (req, res, next) => {
   try {
@@ -76,6 +139,14 @@ export const archiveHabit = async (req, res, next) => {
     const habit = await Habit.findOneAndUpdate({ _id: req.params.id, user: req.user.userId }, { isArchived: true }, { new: true });
     if (!habit) throw new ApiError(404, 'Habit not found');
     return res.json(new ApiResponse(200, { success: true }, 'Archived'));
+  } catch (e) { next(e); }
+};
+
+export const restoreHabit = async (req, res, next) => {
+  try {
+    const habit = await Habit.findOneAndUpdate({ _id: req.params.id, user: req.user.userId }, { isArchived: false }, { new: true });
+    if (!habit) throw new ApiError(404, 'Habit not found');
+    return res.json(new ApiResponse(200, habit, 'Restored'));
   } catch (e) { next(e); }
 };
 
@@ -139,7 +210,35 @@ export const streakForHabit = async (req, res, next) => {
     const habit = await Habit.findOne({ _id: req.params.id, user: req.user.userId });
     if (!habit) throw new ApiError(404, 'Habit not found');
     const logs = await HabitLog.find({ habit: habit._id, user: req.user.userId }).sort({ date: -1 });
-    const streak = calculateStreak(logs, habit.frequencyType);
+    const streak = computeFlexibleStreak(habit, logs, new Date().toISOString().slice(0,10));
     return res.json(new ApiResponse(200, { streak }));
+  } catch (e) { next(e); }
+};
+
+// Batch logs endpoint: GET /api/habits/logs/batch?habitIds=a,b,c&from=YYYY-MM-DD&to=YYYY-MM-DD
+export const batchLogs = async (req, res, next) => {
+  try {
+    const { habitIds, from, to } = req.query;
+    if (!habitIds) throw new ApiError(400, 'habitIds required');
+    const ids = habitIds.split(',').filter(Boolean);
+    if (!ids.length) throw new ApiError(400, 'No valid habit ids');
+    const habits = await Habit.find({ _id: { $in: ids }, user: req.user.userId });
+    const allowedIds = habits.map(h => h._id.toString());
+    const filter = { habit: { $in: allowedIds }, user: req.user.userId };
+    if (from && to) {
+      const fromDate = new Date(from + 'T00:00:00Z');
+      const toDate = new Date(to + 'T00:00:00Z');
+      const diff = (toDate - fromDate)/86400000;
+      if (diff > 90) throw new ApiError(400, 'Range exceeds 90 days');
+      filter.date = { $gte: from, $lte: to };
+    }
+    const logs = await HabitLog.find(filter).sort({ date: -1 });
+    const grouped = {};
+    for (const l of logs) {
+      const hid = l.habit.toString();
+      if (!grouped[hid]) grouped[hid] = [];
+      grouped[hid].push(l);
+    }
+    return res.json(new ApiResponse(200, grouped));
   } catch (e) { next(e); }
 };

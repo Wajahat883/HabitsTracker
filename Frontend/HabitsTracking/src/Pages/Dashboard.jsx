@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useChartData } from "../context/useChartData";
-import { useHabitContext } from "../context/HabitContext";
+import { useHabitContext } from "../context/useHabitContext";
 import HabitForm from "../Components/Habits/HabitForm";
 import HabitList from "../Components/Habits/HabitList";
 import HabitTracker from "../Components/Habits/HabitTracker";

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchLogs, saveLog } from '../../api/habits';
-import { useHabitContext } from '../../context/HabitContext';
+import { useHabitContext } from '../../context/useHabitContext';
 
 const STATUSES = ['incomplete','completed','skipped'];
 
@@ -59,7 +59,7 @@ export default function HabitTracker() {
     <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
       <h4 className="text-white font-semibold mb-3">Tracker (Last 14 Days)</h4>
       {loading && <div className="text-slate-400 text-xs mb-2">Loading...</div>}
-      <div className="grid grid-cols-7 gap-2">
+  <div className="grid grid-cols-7 gap-2" role="grid" aria-label="Habit tracker last 14 days">
         {days.map(d => {
           const ds = fmt(d);
           const status = logs[ds]?.status || 'incomplete';
@@ -67,8 +67,9 @@ export default function HabitTracker() {
             if (status === 'completed') color = 'bg-green-600';
             else if (status === 'skipped') color = 'bg-yellow-600';
           return (
-            <button key={ds} onClick={() => toggle(ds)} title={ds}
-              className={`h-10 w-10 rounded text-xs text-white flex items-center justify-center ${color}`}>{d.getDate()}</button>
+    <button key={ds} onClick={() => toggle(ds)} title={ds}
+      aria-label={`Day ${ds} status ${status}`}
+      className={`h-10 w-10 rounded text-xs text-white flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400 ${color}`}>{d.getDate()}</button>
           );
         })}
       </div>

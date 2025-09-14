@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createHabit, updateHabit } from '../../api/habits';
 import { createGroupHabit } from '../../api/groups';
-import { useHabitContext } from '../../context/HabitContext';
+import { useHabitContext } from '../../context/useHabitContext';
 
 const defaultForm = {
   title: '',

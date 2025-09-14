@@ -32,6 +32,12 @@ export async function archiveHabit(id) {
   return (await res.json()).data;
 }
 
+export async function restoreHabit(id) {
+  const res = await fetch(`${API_BASE}/api/habits/${id}/restore`, { method: 'PATCH', credentials: 'include' });
+  if (!res.ok) throw new Error('Failed to restore habit');
+  return (await res.json()).data;
+}
+
 export async function deleteHabit(id) {
   const res = await fetch(`${API_BASE}/api/habits/${id}`, { method: 'DELETE', credentials: 'include' });
   if (!res.ok) throw new Error('Failed to delete habit');
@@ -49,4 +55,12 @@ export async function fetchLogs(id, { from, to }) {
   const res = await fetch(url, { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to load logs');
   return (await res.json()).data || [];
+}
+
+export async function fetchBatchLogs(habitIds = [], { from, to }) {
+  if (!habitIds.length) return {};
+  const url = `${API_BASE}/api/habits/logs/batch/all?habitIds=${habitIds.join(',')}&from=${from}&to=${to}`;
+  const res = await fetch(url, { credentials: 'include' });
+  if (!res.ok) throw new Error('Failed to load batch logs');
+  return (await res.json()).data || {};
 }
