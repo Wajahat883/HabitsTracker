@@ -13,7 +13,7 @@ const defaultForm = {
   groupId: ''
 };
 
-export default function HabitForm() {
+export default function HabitForm({ onCreated }) {
   const { groups, setHabits, setEditingHabit, setSelectedHabit, editingHabit } = useHabitContext();
   const [form, setForm] = useState(editingHabit ? { ...defaultForm, ...editingHabit } : defaultForm);
   const [loading, setLoading] = useState(false);
@@ -41,6 +41,9 @@ export default function HabitForm() {
         const created = form.groupId ? await createGroupHabit(form.groupId, form) : await createHabit(form);
         setHabits(prev => [created, ...prev]);
         setSelectedHabit(created);
+        if (onCreated) {
+          try { onCreated(created); } catch { /* no-op */ }
+        }
         setForm(defaultForm);
       }
     } catch (err) {

@@ -5,6 +5,7 @@ import User from "../Models/User.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import ApiError from "../utils/ApiErros.js";
 import { calculateDailyStreak, fillDateRange } from "../utils/streak.js";
+import Friend from "../Models/Friend.js";
 
 function todayStr() { return new Date().toISOString().slice(0,10); }
 
@@ -84,6 +85,51 @@ export const allUsersProgress = async (req, res, next) => {
       const streaks = habits.map(h => calculateDailyStreak(logs.filter(l => l.habit.equals(h._id)), 1));
       const avgStreak = streaks.length ? Number((streaks.reduce((a,b)=>a+b,0)/streaks.length).toFixed(1)) : 0;
       summaries.push({ userId: u._id, name: u.name, avgStreak, habits: habits.length });
+    }
+    return res.json(new ApiResponse(200, summaries));
+  } catch (e) { next(e); }
+};
+
+// Progress summaries limited to the authenticated user's accepted friends
+export const friendsProgress = async (req, res, next) => {
+  try {
+    const { range = '30d' } = req.query;
+    const days = parseInt(range) || 30;
+    const endDate = todayStr();
+    const startDate = new Date(Date.now() - (days-1)*86400000).toISOString().slice(0,10);
+
+    // Collect friend userIds from both outgoing and incoming accepted relationships
+    const outgoing = await Friend.find({ user: req.user.userId, status: 'accepted' }).select('friend');
+    const incoming = await Friend.find({ friend: req.user.userId, status: 'accepted' }).select('user');
+    const friendIds = new Set();
+    outgoing.forEach(f => f.friend && friendIds.add(f.friend.toString()));
+    incoming.forEach(f => f.user && friendIds.add(f.user.toString()));
+
+    if (friendIds.size === 0) {
+      return res.json(new ApiResponse(200, [], 'No friends')); 
+    }
+
+    const summaries = [];
+    // Query each friend (small N expected). For larger scale, batch aggregate.
+    for (const fid of friendIds) {
+      const userDoc = await User.findById(fid).select('_id username name');
+      if (!userDoc) continue;
+      const habits = await Habit.find({ user: fid, isArchived: false });
+      const logs = await HabitLog.find({ user: fid, date: { $gte: startDate, $lte: endDate } });
+      const streaks = habits.map(h => calculateDailyStreak(logs.filter(l => l.habit.equals(h._id)).sort((a,b)=> b.date.localeCompare(a.date)), 1));
+      const totalRequired = habits.length * days; // naive daily assumption
+      const totalCompleted = logs.filter(l => l.status === 'completed').length;
+      const overallCompletion = totalRequired ? Number(((totalCompleted/totalRequired)*100).toFixed(1)) : 0;
+      const avgStreak = streaks.length ? Number((streaks.reduce((a,b)=>a+b,0)/streaks.length).toFixed(1)) : 0;
+      const longestStreak = streaks.length ? Math.max(...streaks) : 0;
+      summaries.push({
+        userId: fid,
+        name: userDoc.username || userDoc.name || 'Unknown',
+        overallCompletion,
+        avgStreak,
+        longestStreak,
+        activeHabits: habits.length
+      });
     }
     return res.json(new ApiResponse(200, summaries));
   } catch (e) { next(e); }

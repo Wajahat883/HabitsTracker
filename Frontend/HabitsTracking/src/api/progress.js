@@ -18,3 +18,7 @@ export function fetchHeatmap(year = new Date().getFullYear()) {
 export function fetchHabitTrend(habitId, days = 30) {
   return jsonGet(`/api/progress/habits/${habitId}/trend?days=${days}`);
 }
+
+export function fetchFriendsProgress(range = '30d') {
+  return jsonGet(`/api/progress/friends?range=${range}`);
+}

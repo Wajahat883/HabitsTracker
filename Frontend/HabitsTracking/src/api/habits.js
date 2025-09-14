@@ -32,6 +32,12 @@ export async function archiveHabit(id) {
   return (await res.json()).data;
 }
 
+export async function deleteHabit(id) {
+  const res = await fetch(`${API_BASE}/api/habits/${id}`, { method: 'DELETE', credentials: 'include' });
+  if (!res.ok) throw new Error('Failed to delete habit');
+  return (await res.json()).data;
+}
+
 export async function saveLog(id, { date, status, note }) {
   const res = await fetch(`${API_BASE}/api/habits/${id}/logs`, { method: 'POST', credentials: 'include', headers: jsonHeaders, body: JSON.stringify({ date, status, note }) });
   if (!res.ok) throw new Error('Failed to save log');
