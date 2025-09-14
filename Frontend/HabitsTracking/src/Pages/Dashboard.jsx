@@ -10,7 +10,8 @@ import AllUsersList from "../Components/Friends/AllUsersList";
 import SocialFeaturesTest from "../Components/Common/SocialFeaturesTest";
 import TaskCompletion from "../Components/Progress/TaskCompletion";
 import TaskProgressWidget from "../Components/Common/TaskProgressWidget";
-import HabitFolderManager from "../Components/Common/HabitFolderManager";
+// Removed HabitFolderManager (deprecated)
+// NewAreaModal removed per request (creation button removed)
 import { Bar, Doughnut } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -40,7 +41,6 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tool
 const sidebarItems = [
   { label: "Dashboard", icon: <FaHome /> },
   { label: "Progress", icon: <FaRegSun /> },
-  { label: "New Area", icon: <FaPlus /> },
   { label: "Habits", icon: <FaInfinity /> },
   { label: "Off Mode", icon: <FaPause /> },
   { label: "Payment", icon: <FaCreditCard /> },
@@ -83,7 +83,7 @@ const doughnutOptions = {
 
 const Dashboard = () => {
   const [activeSection, setActiveSection] = useState("Dashboard");
-  const [dynamicFolders, setDynamicFolders] = useState([]);
+  // Area functionality disabled (state removed)
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [theme, setTheme] = useState('dark');
   const [isValidatingSession, setIsValidatingSession] = useState(true);
@@ -231,25 +231,6 @@ const Dashboard = () => {
 
   // Load folders from localStorage
   useEffect(() => {
-    const loadFolders = () => {
-      const savedFolders = localStorage.getItem('habitTracker_folders');
-      if (savedFolders) {
-        const parsedFolders = JSON.parse(savedFolders);
-        console.log('Loading folders:', parsedFolders);
-        setDynamicFolders(parsedFolders);
-      }
-    };
-
-    loadFolders();
-    
-    // Listen for folder updates
-    const handleFoldersUpdate = () => {
-      console.log('Folders updated event received');
-      loadFolders();
-    };
-
-    window.addEventListener('foldersUpdated', handleFoldersUpdate);
-    return () => window.removeEventListener('foldersUpdated', handleFoldersUpdate);
   }, []);
 
   // Load user profile data
@@ -552,11 +533,12 @@ const Dashboard = () => {
         </nav>
         
         {/* Habit Folder Manager */}
-        <div className="flex-1 border-t border-slate-800 pt-4">
-          <HabitFolderManager />
+        <div className="flex-1 border-t border-slate-800 pt-4 space-y-2">
+          {/* Area list removed */}
         </div>
         </aside>
       )}
+  {/* Area creation modal removed */}
       {showSettingsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg border border-slate-700">
@@ -782,48 +764,7 @@ const Dashboard = () => {
               </div>
               
               {/* Your Folders Section */}
-              {dynamicFolders.length > 0 && (
-                <div className="col-span-1 md:col-span-2 bg-slate-800 rounded-xl shadow-lg p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <FaFolder className="text-yellow-400 text-xl" />
-                    <h3 className="text-white font-semibold">Your Habit Folders</h3>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {dynamicFolders.map((folder) => (
-                      <div key={folder.id} className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer"
-                           onClick={() => setActiveSection(folder.name)}>
-                        <div className="flex items-center gap-3 mb-2">
-                          <FaFolder className="text-yellow-400" />
-                          <h4 className="text-white font-medium">{folder.name}</h4>
-                        </div>
-                        <div className="text-slate-300 text-sm">
-                          {folder.habits?.length || 0} habits
-                        </div>
-                        <div className="text-slate-400 text-xs mt-1">
-                          Created {new Date(folder.createdAt).toLocaleDateString()}
-                        </div>
-                        <div className="mt-3">
-                          <div className="text-xs text-slate-400 mb-1">
-                            Completion: {folder.habits?.length > 0 
-                              ? Math.round((folder.habits.filter(h => h.completed).length / folder.habits.length) * 100)
-                              : 0}%
-                          </div>
-                          <div className="w-full bg-slate-600 rounded-full h-2">
-                            <div 
-                              className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                              style={{
-                                width: `${folder.habits?.length > 0 
-                                  ? (folder.habits.filter(h => h.completed).length / folder.habits.length) * 100
-                                  : 0}%`
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Removed old habit folder grid */}
 
               {/* Quick Habit Tracker */}
               <div className="col-span-1 md:col-span-2 bg-slate-800 rounded-xl shadow-lg p-6">
@@ -991,85 +932,6 @@ const Dashboard = () => {
           )}
 
           {/* Dynamic Folder Sections */}
-          {dynamicFolders.map((folder) => 
-            activeSection === folder.name && (
-              <div key={`section-${folder.id}`} className="col-span-1 md:col-span-2">
-                <div className="bg-slate-800 rounded-xl shadow-lg p-6">
-                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-700">
-                    <FaFolder className="text-yellow-400 text-2xl" />
-                    <div>
-                      <h2 className="text-2xl font-bold text-white">{folder.name}</h2>
-                      <p className="text-slate-400">
-                        {folder.habits?.length || 0} habits • Created {new Date(folder.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Habit Management Tools */}
-                    <div className="space-y-4">
-                      <div className="bg-slate-700 p-4 rounded-lg">
-                        <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-                          <FaPlus className="text-green-400" />
-                          Create New Habit
-                        </h3>
-                        <HabitForm />
-                      </div>
-
-                      <div className="bg-slate-700 p-4 rounded-lg">
-                        <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-                          <FaUsers className="text-blue-400" />
-                          Create Habit Group
-                        </h3>
-                        <GroupForm />
-                      </div>
-                    </div>
-
-                    {/* Habit Display & Tracking */}
-                    <div className="space-y-4">
-                      <div className="bg-slate-700 p-4 rounded-lg">
-                        <h3 className="text-white font-semibold mb-3">Your Habits</h3>
-                        <HabitList />
-                      </div>
-
-                      <div className="bg-slate-700 p-4 rounded-lg">
-                        <h3 className="text-white font-semibold mb-3">Habit Tracker</h3>
-                        <HabitTracker />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Folder Specific Habits */}
-                  {folder.habits && folder.habits.length > 0 && (
-                    <div className="mt-6 bg-slate-700 p-4 rounded-lg">
-                      <h3 className="text-white font-semibold mb-3">
-                        Habits in "{folder.name}"
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {folder.habits.map((habit) => (
-                          <div key={habit.id} className="bg-slate-600 p-3 rounded flex items-center gap-3">
-                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                              habit.completed 
-                                ? 'bg-green-600 border-green-600 text-white' 
-                                : 'border-slate-400'
-                            }`}>
-                              {habit.completed && <FaCheckCircle className="text-xs" />}
-                            </div>
-                            <div className="flex-1">
-                              <div className="text-white font-medium text-sm">{habit.name}</div>
-                              <div className="text-slate-400 text-xs">
-                                {habit.completed ? 'Completed' : 'Pending'}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          )}
           </main>
         </>
       )}
