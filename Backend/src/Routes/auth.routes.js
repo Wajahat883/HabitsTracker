@@ -2,7 +2,7 @@
 import express from "express";
 const router = express.Router();
 
-import { registerUser, loginUser, googleAuth, forgotPassword, resetPassword, logoutUser, searchUsers, getAllUsers } from "../Controllers/authcontroller.controller.js";
+import { registerUser, loginUser, googleAuth, forgotPassword, resetPassword, logoutUser, searchUsers, getAllUsers, updateProfile } from "../Controllers/authcontroller.controller.js";
 import authMiddleware from "../Middleware/authMiddleware.js";
 
 // Register route
@@ -38,7 +38,8 @@ router.get("/profile", authMiddleware, (req, res) => {
       user: {
         id: user._id,
         username: user.username,
-        name: user.name,
+        // Provide a stable name alias for frontend compatibility
+        name: user.name || user.username,
         email: user.email,
         profilePicture: user.profilePicture,
         picture: user.picture,
@@ -49,6 +50,35 @@ router.get("/profile", authMiddleware, (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: "Failed to fetch profile" 
+    });
+  }
+});
+
+// Update profile (protected route)
+router.put('/profile', authMiddleware, updateProfile);
+
+// Validate token (protected route)
+router.get("/validate", authMiddleware, (req, res) => {
+  try {
+    const user = req.user;
+    res.json({
+      success: true,
+      valid: true,
+      user: {
+        id: user._id,
+        username: user.username,
+        name: user.name || user.username,
+        email: user.email,
+        profilePicture: user.profilePicture,
+        picture: user.picture,
+        avatar: user.avatar
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      valid: false,
+      message: "Token validation failed" 
     });
   }
 });

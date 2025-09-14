@@ -16,8 +16,15 @@ import { errorHandler } from '../Middleware/authMiddleware.js';
 const app = express();
 
 
+// Dynamic CORS to support auto-incrementing Vite dev ports
+const allowedDevPattern = /^(https?:\/\/localhost:51(7[3-9]|8[0-9]))$/; // 5173-5189
 app.use(cors({
-    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
+    origin: (origin, cb) => {
+        if (!origin) return cb(null, true); // same-origin / curl
+        if (allowedDevPattern.test(origin)) return cb(null, true);
+        console.warn('[CORS] Blocked origin:', origin);
+        return cb(new Error('Not allowed by CORS'));
+    },
     credentials: true
 }));
 

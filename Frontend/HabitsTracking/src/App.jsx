@@ -4,11 +4,13 @@ import Login from "./Components/Auth/Login";
 import Signup from "./Components/Auth/Signup";
 import Dashboard from "./Pages/Dashboard";
 import { ChartDataProvider } from "./context/ChartDataContext";
+import { ThemeProvider } from './context/ThemeContext';
 import { HabitProvider } from "./context/HabitContext";
 
 function App() {
   return (
-    <ChartDataProvider>
+  <ThemeProvider>
+  <ChartDataProvider>
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -22,6 +24,7 @@ function App() {
         </Routes>
       </Router>
     </ChartDataProvider>
+    </ThemeProvider>
   );
 }
 

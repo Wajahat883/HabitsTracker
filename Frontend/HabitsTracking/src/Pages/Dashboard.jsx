@@ -22,27 +22,29 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { FaHome, FaListAlt, FaSun, FaRegSun, FaMoon, FaPlus, FaInfinity, FaPause, FaCreditCard, FaCog, FaLink, FaUserFriends, FaCheckCircle, FaFolder, FaUsers } from "react-icons/fa";
+import { FaHome, FaListAlt, FaSun, FaRegSun, FaMoon, FaPlus, FaInfinity, FaPause, FaCreditCard, FaCog, FaLink, FaUserFriends, FaCheckCircle, FaFolder, FaUsers, FaChevronDown, FaUser, FaPalette, FaSignOutAlt } from "react-icons/fa";
+import ProfileSettingsForm from '../Components/Profile/ProfileSettingsForm';
 import image from '../assets/logo-habit-tracker.png';
+import UserProfileBadge from '../Components/Common/UserProfileBadge';
 import ProgressSummary from "../Components/Progress/ProgressSummary";
 import HabitTrendChart from "../Components/Progress/HabitTrendChart";
 import CalendarHeatmap from "../Components/Progress/CalendarHeatmap";
 import GroupForm from "../Components/Groups/GroupForm";
+import ProfilePage from "../Components/Profile/ProfilePage";
 import FriendsList from "../Components/Friends/FriendsList";
 import InviteFriends from "../Components/Friends/InviteFriends";
+import Login from "../Components/Auth/Login";
+import Signup from "../Components/Auth/Signup";
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
 const sidebarItems = [
   { label: "Dashboard", icon: <FaHome /> },
   { label: "Progress", icon: <FaRegSun /> },
-  { label: "Morning", icon: <FaSun /> },
-  { label: "Afternoon", icon: <FaRegSun /> },
-  { label: "Evening", icon: <FaMoon /> },
   { label: "New Area", icon: <FaPlus /> },
   { label: "Habits", icon: <FaInfinity /> },
   { label: "Off Mode", icon: <FaPause /> },
   { label: "Payment", icon: <FaCreditCard /> },
-  { label: "App Settings", icon: <FaCog /> },
+  // Removed App Settings from sidebar; now inside profile dropdown
   { label: "Resources", icon: <FaLink /> },
   { label: "Friends", icon: <FaUserFriends /> },
   { label: "Status", icon: <FaCheckCircle /> },
@@ -82,22 +84,49 @@ const doughnutOptions = {
 const Dashboard = () => {
   const [activeSection, setActiveSection] = useState("Dashboard");
   const [dynamicFolders, setDynamicFolders] = useState([]);
-  const [currentUser, setCurrentUser] = useState({
-    name: "Guest",
-    profilePicture: null,
-    email: null
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [theme, setTheme] = useState('dark');
+  const [isValidatingSession, setIsValidatingSession] = useState(true);
+  const [currentUser, setCurrentUser] = useState(() => {
+    // Try to load from localStorage immediately
+    try {
+      const savedUser = localStorage.getItem('currentUser');
+      if (savedUser) {
+        const userData = JSON.parse(savedUser);
+        console.log('Loading user on init:', userData);
+        return userData;
+      }
+    } catch (error) {
+      console.error('Error loading user from localStorage:', error);
+    }
+    return {
+      name: "",
+      profilePicture: null,
+      email: null
+    };
   });
-  const { userProgressData, friendData, compareData, setFriendData, setCompareData } = useChartData();
+  
+  // Auth & view state
+  const [activeView, setActiveView] = useState('login');
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    try {
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      const user = localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser');
+      return !!token || !!user; // initial optimistic flag
+    } catch { return false; }
+  });
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const { userProgressData, compareData, setFriendData, setCompareData } = useChartData();
   const {
     habits,
-    setHabits,
+  // setHabits,
     selectedHabit,
     setSelectedHabit,
-    editingHabit,
-    setEditingHabit,
-    habitLoading,
+  // editingHabit,
+  // setEditingHabit,
+  // habitLoading,
     groups,
-    setGroups,
+  // setGroups,
     selectedGroup,
     setSelectedGroup,
     selectedFriend,
@@ -108,7 +137,7 @@ const Dashboard = () => {
     setGroupProgress,
     allUsersProgress,
     progressSummary,
-    setProgressSummary,
+  // setProgressSummary,
     friends,
     loadHabits,
     fetchFriendProgressData,
@@ -134,7 +163,7 @@ const Dashboard = () => {
 
     // Add friend data if available
     if (friendProgress?.habitStreaks) {
-      const friendLabels = friendProgress.habitStreaks.map(h => h.title);
+  // const friendLabels = friendProgress.habitStreaks.map(h => h.title); // unused
       const friendData = friendProgress.habitStreaks.map(h => h.streak);
       datasets.push({
         label: 'Friend\'s Streaks',
@@ -146,7 +175,7 @@ const Dashboard = () => {
 
     // Add group data if available
     if (groupProgress?.habitStreaks) {
-      const groupLabels = groupProgress.habitStreaks.map(h => h.title);
+  // const groupLabels = groupProgress.habitStreaks.map(h => h.title); // unused
       const groupData = groupProgress.habitStreaks.map(h => h.streak);
       datasets.push({
         label: 'Group Streaks',
@@ -229,13 +258,16 @@ const Dashboard = () => {
       try {
         // Check localStorage first for cached user data
         const savedUser = localStorage.getItem('currentUser');
+        console.log('Saved user from localStorage:', savedUser);
         if (savedUser) {
           const userData = JSON.parse(savedUser);
+          console.log('Parsed user data:', userData);
           setCurrentUser(userData);
         }
 
         // Try to fetch fresh data from server
-        const response = await fetch('/api/auth/profile', {
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const response = await fetch(`${API_URL}/api/auth/profile`, {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -245,17 +277,19 @@ const Dashboard = () => {
 
         if (response.ok) {
           const userData = await response.json();
+          console.log('User profile data received:', userData);
           const userProfile = {
-            name: userData.username || userData.name || "Guest",
+            name: userData.username || userData.name || "",
             profilePicture: userData.profilePicture || userData.picture || null,
             email: userData.email || null
           };
+          console.log('Setting user profile:', userProfile);
           setCurrentUser(userProfile);
           localStorage.setItem('currentUser', JSON.stringify(userProfile));
         }
       } catch (error) {
         console.log('User profile fetch failed:', error);
-        // Keep default guest data if fetch fails
+        // Keep empty data if fetch fails
       }
     };
 
@@ -270,32 +304,235 @@ const Dashboard = () => {
     return () => window.removeEventListener('userProfileUpdated', handleProfileUpdate);
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showProfileDropdown && !event.target.closest('.relative')) {
+        setShowProfileDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showProfileDropdown]);
+
+  // Load theme on mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    setTheme(savedTheme);
+    document.documentElement.classList.toggle('light-theme', savedTheme === 'light');
+  }, []);
+
+  // Load user from localStorage on mount and listen for auth events
+  useEffect(() => {
+  const validateUserSession = async () => {
+      const savedUser = localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser');
+      const authToken = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      
+      if (savedUser && authToken) {
+        try {
+          const userData = JSON.parse(savedUser);
+          console.log('Validating user session:', userData);
+          
+          // Try to validate token with backend
+          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/validate`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${authToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            console.log('[SESSION] /validate OK');
+            const raw = await response.json();
+            // Backend wraps payload: { statuscode, data: { user, accessToken? }, message }
+            const payload = raw?.data?.user ? raw.data : raw; // fall back if already unwrapped
+            const apiUser = payload.user;
+            let canonical = userData;
+            if (apiUser) {
+              console.log('[SESSION] validate user payload (unwrapped):', apiUser);
+              canonical = {
+                name: apiUser.name || apiUser.username || userData.name,
+                email: apiUser.email || userData.email,
+                profilePicture: apiUser.profilePicture || apiUser.picture || userData.profilePicture || null
+              };
+              localStorage.setItem('currentUser', JSON.stringify(canonical));
+              sessionStorage.setItem('currentUser', JSON.stringify(canonical));
+            }
+            setCurrentUser(canonical);
+            setActiveView('dashboard');
+            setIsAuthenticated(true);
+          } else {
+            console.log('Invalid session, clearing data');
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('authToken');
+            sessionStorage.removeItem('currentUser');
+            sessionStorage.removeItem('authToken');
+            setActiveView('login');
+            setIsAuthenticated(false);
+          }
+        } catch (error) {
+          console.error('Session validation failed (network or parse):', error);
+          // If validation fails, still use local data but with caution
+          const userData = JSON.parse(savedUser);
+          setCurrentUser(userData);
+          setActiveView('dashboard');
+          setIsAuthenticated(true);
+        }
+      } else if (savedUser) {
+        // No token but has user data - set user but might need re-auth later
+        try {
+          const userData = JSON.parse(savedUser);
+          console.log('Loading user without token:', userData);
+          setCurrentUser(userData);
+          setActiveView('dashboard');
+          setIsAuthenticated(true);
+        } catch (error) {
+          console.error('Error parsing saved user:', error);
+          setActiveView('login');
+          setIsAuthenticated(false);
+        }
+      } else {
+        console.log('No saved user data found');
+        setActiveView('login');
+        setIsAuthenticated(false);
+      }
+      
+      setIsValidatingSession(false);
+    };
+
+    validateUserSession();
+
+    // Listen for profile updates
+    const handleProfileUpdate = (event) => {
+      console.log('Profile update event received:', event.detail);
+      setCurrentUser(event.detail);
+    };
+
+    // Listen for login events
+    const handleLogin = (event) => {
+      console.log('Login event received:', event.detail);
+      if (event.detail) setCurrentUser(prev => ({ ...prev, ...event.detail }));
+      setActiveView('dashboard');
+      setIsAuthenticated(true);
+    };
+
+    // Listen for logout events
+    const handleLogout = () => {
+      console.log('Logout event received');
+      setCurrentUser({ name: "", profilePicture: null, email: null });
+      setActiveView('login');
+      setIsAuthenticated(false);
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    window.addEventListener('userLoggedIn', handleLogin);
+    window.addEventListener('userLoggedOut', handleLogout);
+
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+      window.removeEventListener('userLoggedIn', handleLogin);
+      window.removeEventListener('userLoggedOut', handleLogout);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-900">
-      {/* Fixed Navbar */}
-      <nav className="fixed top-0 left-0 right-0 h-16 bg-slate-800 flex items-center justify-between px-8 shadow-md z-40 border-b border-slate-700">
-        <div className="flex items-center gap-3">
-          <img src={image} alt="Habit Tracker Logo" className="h-10 w-10" />
-          <span className="text-xl font-bold text-blue-400 tracking-tight">HabitTracker</span>
+      {isValidatingSession ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-white text-xl">Loading...</div>
         </div>
-        <div className="flex items-center gap-4">
-          <NotificationBell />
-          <span className="text-white font-semibold">{currentUser.name}</span>
-          {currentUser.profilePicture ? (
-            <img 
-              src={currentUser.profilePicture} 
-              alt="Profile" 
-              className="h-10 w-10 rounded-full object-cover border-2 border-blue-400"
-            />
-          ) : (
-            <div className="h-10 w-10 rounded-full bg-blue-700 flex items-center justify-center text-white font-bold">
-              {currentUser.name.charAt(0).toUpperCase()}
+      ) : (
+        <>
+          {/* Fixed Navbar - Hidden on auth pages */}
+          {activeView === 'dashboard' && (
+          <nav className="fixed top-0 left-0 right-0 h-16 bg-slate-800 flex items-center justify-between px-8 shadow-md z-40 border-b border-slate-700">
+            <div className="flex items-center gap-3">
+              <img src={image} alt="Habit Tracker Logo" className="h-10 w-10" />
+              <span className="text-xl font-bold text-blue-400 tracking-tight">HabitTracker</span>
             </div>
+            <div className="flex items-center gap-4">
+              {/* Show NotificationBell only when logged in and in dashboard view */}
+              {activeView === 'dashboard' && isAuthenticated && (
+                <NotificationBell />
+              )}
+
+              {/* User Profile Section or Auth Buttons */}
+              {isAuthenticated ? (
+                <div className="relative">
+                  <button
+                    className="flex items-center gap-2 pr-3 pl-1 h-14 rounded-full hover:bg-slate-700 transition group"
+                    onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                  >
+                    <UserProfileBadge user={currentUser} size='sm' showEmail={false} />
+                    <FaChevronDown className={`text-slate-400 text-xs transition-transform group-hover:text-white ${showProfileDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+                  {showProfileDropdown && (
+                    <div className="absolute right-0 top-full mt-2 w-72 bg-slate-800 rounded-xl shadow-2xl border border-slate-700 z-50 overflow-hidden">
+                      <div className="p-5 bg-gradient-to-br from-slate-800 to-slate-900 border-b border-slate-700">
+                        <div className="flex items-center gap-4">
+                          <UserProfileBadge user={currentUser} size='md' />
+                        </div>
+                      </div>
+                      <div className="py-2">
+                        <button
+                          onClick={() => { setActiveSection('Profile'); setActiveView('dashboard'); setShowProfileDropdown(false); }}
+                          className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-slate-700 transition-colors"
+                        >
+                          <FaUser className="text-blue-400" />
+                          <span className="text-white text-sm font-medium">Profile</span>
+                        </button>
+                        <button
+                          onClick={() => { const newTheme = theme === 'dark' ? 'light' : 'dark'; setTheme(newTheme); localStorage.setItem('theme', newTheme); document.documentElement.classList.toggle('light-theme', newTheme === 'light'); }}
+                          className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-slate-700 transition-colors"
+                        >
+                          <FaPalette className="text-green-400" />
+                          <span className="text-white text-sm font-medium">Theme: {theme === 'dark' ? 'Dark' : 'Light'}</span>
+                        </button>
+                        <button
+                          onClick={() => { setShowSettingsModal(true); setShowProfileDropdown(false); }}
+                          className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-slate-700 transition-colors"
+                        >
+                          <FaCog className="text-slate-400" />
+                          <span className="text-white text-sm font-medium">Settings</span>
+                        </button>
+                        <div className="border-t border-slate-700 mt-2 pt-2">
+                          <button
+                            onClick={() => { localStorage.removeItem('currentUser'); localStorage.removeItem('authToken'); localStorage.removeItem('habitTracker_folders'); sessionStorage.removeItem('currentUser'); sessionStorage.removeItem('authToken'); setCurrentUser({ name: '', profilePicture: null, email: null }); setActiveView('login'); setShowProfileDropdown(false); window.dispatchEvent(new CustomEvent('userLoggedOut')); setIsAuthenticated(false); }}
+                            className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-red-700 transition-colors text-red-400"
+                          >
+                            <FaSignOutAlt />
+                            <span className="text-sm font-medium">Sign Out</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setActiveView('login')}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+                  >
+                    Login
+                  </button>
+                  <button
+                    onClick={() => setActiveView('signup')}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors"
+                  >
+                    Signup
+                  </button>
+                </div>
+              )}
+            </div>
+          </nav>
           )}
-        </div>
-      </nav>
-      {/* Fixed Sidebar */}
-      <aside className="fixed top-16 left-0 bottom-0 w-72 bg-slate-900 text-white flex flex-col py-6 px-4 shadow-xl border-r border-slate-800 overflow-y-auto z-30">
+      
+  {/* Fixed Sidebar - Only show in dashboard view when authenticated */}
+  {activeView === 'dashboard' && isAuthenticated && (
+        <aside className="fixed top-16 left-0 bottom-0 w-72 bg-slate-900 text-white flex flex-col py-6 px-4 shadow-xl border-r border-slate-800 overflow-y-auto z-30">
         {/* Navigation Menu */}
         <nav className="mb-6">
           <ul className="space-y-2">
@@ -318,9 +555,59 @@ const Dashboard = () => {
         <div className="flex-1 border-t border-slate-800 pt-4">
           <HabitFolderManager />
         </div>
-      </aside>
-      {/* Scrollable Content Area */}
-      <main className="pt-20 ml-72 p-10 min-h-screen grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto">
+        </aside>
+      )}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg border border-slate-700">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+              <h4 className="text-white font-semibold">Settings</h4>
+              <button onClick={()=>setShowSettingsModal(false)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <ProfileSettingsForm onClose={()=>setShowSettingsModal(false)} onUpdated={(p)=> setCurrentUser(p)} />
+          </div>
+        </div>
+      )}
+      
+      {/* Conditional Content Area */}
+      {activeView === 'login' ? (
+        <main className="min-h-screen w-full flex items-center justify-center bg-slate-900">
+          <div className="w-full max-w-lg mx-auto p-6">
+            <Login onSuccess={(userData) => {
+              setCurrentUser(userData);
+              setActiveView('dashboard');
+            }} />
+            <div className="text-center mt-6">
+              <button 
+                onClick={() => setActiveView('signup')}
+                className="text-blue-400 hover:text-blue-300 text-sm font-medium"
+              >
+                Don't have an account? Sign up
+              </button>
+            </div>
+          </div>
+        </main>
+      ) : activeView === 'signup' ? (
+        <main className="min-h-screen w-full flex items-center justify-center bg-slate-900">
+          <div className="w-full max-w-lg mx-auto p-6">
+            <Signup onSuccess={(userData) => {
+              setCurrentUser(userData);
+              setActiveView('dashboard');
+            }} />
+            <div className="text-center mt-6">
+              <button 
+                onClick={() => setActiveView('login')}
+                className="text-blue-400 hover:text-blue-300 text-sm font-medium"
+              >
+                Already have an account? Login
+              </button>
+            </div>
+          </div>
+        </main>
+      ) : (
+        <>
+          {/* Scrollable Content Area */}
+          <main className="pt-20 ml-72 p-10 min-h-screen grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto">
         {/* Dashboard Section */}
           {activeSection === "Dashboard" && (
             <>
@@ -783,8 +1070,12 @@ const Dashboard = () => {
               </div>
             )
           )}
-      </main>
-    </div>
+          </main>
+        </>
+      )}
+      </>
+)}
+    </div>  
   );
 };
 export default Dashboard;

@@ -249,5 +249,36 @@ const resetPassword = asyncHandler(async (req, res) => {
   await user.save();
   res.status(200).json(new ApiResponse(200, {}, "Password reset successful. You can now log in."));
 });
+// ==================== UPDATE PROFILE ====================
+const updateProfile = asyncHandler(async (req, res) => {
+  const userId = req.user?.userId;
+  if (!userId) throw new ApiError(401, 'Unauthorized');
+  const { username, email, profilePicture, privacy } = req.body;
 
-export { registerUser, loginUser, googleAuth, logoutUser, refreshAccessToken, forgotPassword, resetPassword };
+  const update = {};
+  if (username) update.username = username;
+  if (email) update.email = email;
+  if (profilePicture !== undefined) update.profilePicture = profilePicture;
+  if (privacy) update.privacy = privacy;
+
+  if (Object.keys(update).length === 0) {
+    return res.status(400).json(new ApiResponse(400, {}, 'No valid fields to update'));
+  }
+
+  // Ensure email / username uniqueness if provided
+  if (email) {
+    const existing = await User.findOne({ email, _id: { $ne: userId } });
+    if (existing) throw new ApiError(400, 'Email already in use');
+  }
+  if (username) {
+    const existing = await User.findOne({ username, _id: { $ne: userId } });
+    if (existing) throw new ApiError(400, 'Username already in use');
+  }
+
+  const user = await User.findByIdAndUpdate(userId, update, { new: true }).select('-password -refreshToken -resetPasswordToken -resetPasswordExpire');
+  if (!user) throw new ApiError(404, 'User not found');
+
+  res.json(new ApiResponse(200, { user: sanitizeUser(user) }, 'Profile updated successfully'));
+});
+
+export { registerUser, loginUser, googleAuth, logoutUser, refreshAccessToken, forgotPassword, resetPassword, updateProfile };

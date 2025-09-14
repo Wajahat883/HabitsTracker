@@ -9,9 +9,15 @@ const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ message: "No token provided" });
     }
     const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-    req.user = { userId: decoded.userId };
-    // Optionally, fetch user from DB
-    // req.user = await User.findById(decoded.userId);
+    
+    // Fetch full user data from database
+  const user = await User.findById(decoded.userId).select('-password -refreshToken -resetPasswordToken -resetPasswordExpire');
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+    
+  // Maintain backward compatibility: some controllers expect req.user.userId
+  req.user = { ...user.toObject(), userId: user._id };
     next();
   } catch (err) {
     return res.status(401).json({ message: "Invalid or expired token" });

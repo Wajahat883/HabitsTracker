@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-const Signup = () => {
+const Signup = ({ onSuccess }) => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,46 +21,74 @@ const Signup = () => {
     setTimeout(() => setToast({ show: false, message: "", type }), 3000);
   };
 
+  const extractPayload = (raw) => raw?.data && raw.data.user ? raw.data : (raw?.data ? raw.data : raw);
+  const buildProfile = (user, fallback) => {
+    if (!user) return { name: fallback || '', email: fallback || '', profilePicture: null };
+    return {
+      name: user.name || user.username || fallback || '',
+      email: user.email || fallback || '',
+      profilePicture: user.profilePicture || user.picture || null
+    };
+  };
+  const persistAuth = ({ profile, accessToken, refreshToken }) => {
+    if (profile) {
+      localStorage.setItem('currentUser', JSON.stringify(profile));
+      sessionStorage.setItem('currentUser', JSON.stringify(profile));
+    }
+    if (accessToken) { localStorage.setItem('authToken', accessToken); sessionStorage.setItem('authToken', accessToken); }
+    if (refreshToken) { localStorage.setItem('refreshToken', refreshToken); sessionStorage.setItem('refreshToken', refreshToken); }
+  };
+  const fetchCanonical = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/profile`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }, credentials: 'include' });
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.user ? buildProfile(json.user) : null;
+    } catch { return null; }
+  };
+
   const handleSignup = async (e) => {
     e.preventDefault();
     setMessage("");
     setLoading(true);
     try {
+      console.log('Sending signup request to:', `${API_URL}/api/auth/register`);
+      console.log('Signup data:', { username, email, password: '***' });
+      
       const res = await fetch(`${API_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ username, email, password })
       });
-      const data = await res.json();
+      
+      console.log('Signup response status:', res.status);
+      const raw = await res.json();
+      console.log('Signup response data (raw):', raw);
       if (res.ok) {
         showToast("Signup successful! Redirecting to dashboard...", "success");
         setMessage("Signup successful!");
-        
-        // Save user data to localStorage
-        if (data.user) {
-          const userProfile = {
-            name: data.user.username || username || "User",
-            profilePicture: data.user.profilePicture || null,
-            email: data.user.email || email || null
-          };
-          localStorage.setItem('currentUser', JSON.stringify(userProfile));
-        } else {
-          // Fallback if user object not returned
-          const userProfile = {
-            name: username || "User",
-            profilePicture: null,
-            email: email || null
-          };
-          localStorage.setItem('currentUser', JSON.stringify(userProfile));
+        const payload = extractPayload(raw);
+        let profile = buildProfile(payload.user, email);
+        persistAuth({ profile, accessToken: payload.accessToken || payload.token, refreshToken: payload.refreshToken });
+        const canonical = await fetchCanonical();
+        if (canonical) {
+          profile = canonical;
+          persistAuth({ profile, accessToken: localStorage.getItem('authToken'), refreshToken: localStorage.getItem('refreshToken') });
         }
+        if (onSuccess) onSuccess(profile);
+        window.dispatchEvent(new CustomEvent('userLoggedIn', { detail: profile }));
         
-        setTimeout(() => navigate("/dashboard"), 1200);
+        setTimeout(() => {
+          if (!onSuccess) {
+            navigate("/dashboard");
+          }
+        }, 1000);
       } else {
-        showToast(data.message || "Signup failed", "error");
-        setMessage(data.message || "Signup failed");
+        showToast(raw.message || "Signup failed", "error");
+        setMessage(raw.message || "Signup failed");
       }
-    } catch (err) {
+  } catch {
       showToast("Server error", "error");
       setMessage("Server error");
     } finally {
@@ -69,13 +97,13 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-blue-900 to-green-700">
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-blue-900 to-green-700 py-8">
       {/* ✅ Toast Render */}
       {toast.show && <Toast message={toast.message} type={toast.type} />}
 
-      <div className="flex w-full max-w-4xl bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+  <div className="flex w-full max-w-5xl h-[680px] bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
         {/* Left: Signup Form */}
-        <div className="w-full md:w-1/2 p-10 flex flex-col justify-center">
+  <div className="w-full md:w-1/2 p-12 flex flex-col justify-center h-full overflow-y-auto">
           <div className="flex items-center mb-8">
             <span className="text-2xl font-bold text-green-700 tracking-tight">HabitTracker</span>
           </div>
@@ -160,7 +188,7 @@ const Signup = () => {
         </div>
 
         {/* Right: Branding/Info */}
-        <div className="hidden md:flex w-1/2 bg-gradient-to-br from-black via-blue-900 to-green-700 flex-col justify-center items-center p-10 text-white relative">
+  <div className="hidden md:flex w-1/2 bg-gradient-to-br from-black via-blue-900 to-green-700 flex-col justify-center items-center p-12 text-white relative h-full">
           <div className="absolute top-6 right-6 text-sm opacity-80">Support</div>
           <div className="mb-8">
             <div className="bg-white rounded-lg p-6 shadow-lg text-green-900">
