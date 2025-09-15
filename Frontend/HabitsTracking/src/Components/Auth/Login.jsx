@@ -179,6 +179,7 @@ const Login = ({ onSuccess }) => {
             <span className="flex-grow border-b" />
           </div>
           <GoogleLoginButton onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
+          <p className="mt-6 text-center text-sm text-gray-600">No account? <a href="/signup" className="text-purple-700 font-medium hover:underline">Create one</a></p>
         </div>
       </div>
       <div className="hidden md:flex w-1/2 bg-gradient-to-br from-purple-900 via-blue-900 to-black flex-col justify-center items-center p-12 text-white relative">

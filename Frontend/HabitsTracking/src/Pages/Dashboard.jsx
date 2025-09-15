@@ -434,7 +434,7 @@ const Dashboard = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-slate-900 overflow-auto scrollbar-custom">
       {isValidatingSession ? (
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-white text-xl">Loading...</div>
@@ -529,7 +529,7 @@ const Dashboard = () => {
       
   {/* Fixed Sidebar - Only show in dashboard view when authenticated */}
   {activeView === 'dashboard' && isAuthenticated && (
-        <aside className="fixed top-16 left-0 bottom-0 w-72 bg-slate-900 text-white flex flex-col py-6 px-4 shadow-xl border-r border-slate-800 overflow-y-auto z-30">
+        <aside className="fixed top-16 left-0 bottom-0 w-72 bg-slate-900 text-white flex flex-col py-6 px-4 shadow-xl border-r border-slate-800 overflow-y-auto scrollbar-custom z-30">
         {/* Navigation Menu */}
         <nav className="mb-6">
           <ul className="space-y-2">

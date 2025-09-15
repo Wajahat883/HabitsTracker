@@ -8,6 +8,7 @@ import progressRoutes from "../Routes/progress.routes.js";
 import groupRoutes from "../Routes/group.routes.js";
 import friendRoutes from "../Routes/friend.routes.js";
 import notificationRoutes from "../Routes/notification.routes.js";
+import folderRoutes from "../Routes/folder.routes.js";
 import { errorHandler } from '../Middleware/authMiddleware.js';
 
 
@@ -41,6 +42,7 @@ app.use("/api/progress", progressRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/friends", friendRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/folders", folderRoutes);
 app.use(errorHandler);
 
 export default app;
