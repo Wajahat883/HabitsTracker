@@ -29,6 +29,7 @@
   "scripts": {
     "start": "node Server.js",
     "dev": "nodemon Server.js",
+  "build": "echo Backend build step not required (plain Node ESM) && exit 0",
     "start:prod": "NODE_ENV=production node Server.js"
   },
   "keywords": [],
