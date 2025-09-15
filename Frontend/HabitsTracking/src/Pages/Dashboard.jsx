@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useTheme } from '../context/ThemeContext';
 import { useChartData } from "../context/useChartData";
 import { useHabitContext } from "../context/useHabitContext";
 import HabitForm from "../Components/Habits/HabitForm";
@@ -8,7 +9,6 @@ import NotificationBell from "../Components/Notifications/NotificationBell";
 import UserSearch from "../Components/Friends/UserSearch";
 import AllUsersList from "../Components/Friends/AllUsersList";
 import SocialFeaturesTest from "../Components/Common/SocialFeaturesTest";
-import TaskCompletion from "../Components/Progress/TaskCompletion";
 import TaskProgressWidget from "../Components/Common/TaskProgressWidget";
 // Area manager feature (re-added per new requirements)
 import AreaManagerModal from "../Components/Areas/AreaManagerModal";
@@ -29,7 +29,6 @@ import ProfileSettingsForm from '../Components/Profile/ProfileSettingsForm';
 import image from '../assets/logo-habit-tracker.png';
 import UserProfileBadge from '../Components/Common/UserProfileBadge';
 import ProgressSummary from "../Components/Progress/ProgressSummary";
-import HabitTrendChart from "../Components/Progress/HabitTrendChart";
 import CalendarHeatmap from "../Components/Progress/CalendarHeatmap";
 import GroupForm from "../Components/Groups/GroupForm";
 import ProfilePage from "../Components/Profile/ProfilePage";
@@ -90,7 +89,7 @@ const Dashboard = () => {
   // activeArea no longer needed; derive from activeSection when needed
   const setActiveArea = () => {};
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [theme, setTheme] = useState('dark');
+  const { theme, toggleTheme } = useTheme();
   const [isValidatingSession, setIsValidatingSession] = useState(true);
   const [currentUser, setCurrentUser] = useState(() => {
     // Try to load from localStorage immediately
@@ -130,23 +129,19 @@ const Dashboard = () => {
   // editingHabit,
   // setEditingHabit,
   // habitLoading,
-    groups,
+    groups, // retained if used elsewhere (e.g., area sections)
   // setGroups,
-    selectedGroup,
-    setSelectedGroup,
     selectedFriend,
     setSelectedFriend,
     friendProgress,
     setFriendProgress,
-    groupProgress,
-    setGroupProgress,
-    allUsersProgress,
+  groupProgress, // may still influence compareData calculations
     progressSummary,
   // setProgressSummary,
     friends,
     loadHabits,
     fetchFriendProgressData,
-    fetchGroupProgressData,
+  // fetchGroupProgressData, // removed with chart section
   } = useHabitContext();
 
   // Deduplicate friends by _id to avoid duplicate option keys
@@ -189,17 +184,6 @@ const Dashboard = () => {
       });
     }
 
-    // Add group data if available
-    if (groupProgress?.habitStreaks) {
-  // const groupLabels = groupProgress.habitStreaks.map(h => h.title); // unused
-      const groupData = groupProgress.habitStreaks.map(h => h.streak);
-      datasets.push({
-        label: 'Group Streaks',
-        data: groupData,
-        backgroundColor: '#10b981',
-        borderRadius: 8
-      });
-    }
 
     // Update friendData chart to show comparison
     const friendDatasets = [
@@ -222,16 +206,6 @@ const Dashboard = () => {
       });
     }
 
-    // Add group data to second chart if selected
-    if (selectedGroup && groupProgress?.habitStreaks) {
-      const groupData = groupProgress.habitStreaks.map(h => h.streak);
-      friendDatasets.push({
-        label: 'Group Streaks',
-        data: groupData,
-        backgroundColor: '#10b981',
-        borderRadius: 8
-      });
-    }
 
     setFriendData({
       labels: userLabels,
@@ -243,7 +217,7 @@ const Dashboard = () => {
       labels: userLabels, // Use your habit names as base
       datasets: datasets
     });
-  }, [progressSummary, friendProgress, groupProgress, selectedFriend, selectedGroup, setFriendData, setCompareData]);
+  }, [progressSummary, friendProgress, groupProgress, selectedFriend, setFriendData, setCompareData]);
 
   // Friends progress (aggregate) for All Friends bar chart
   const [friendsProgress, setFriendsProgress] = useState([]);
@@ -323,12 +297,7 @@ const Dashboard = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showProfileDropdown]);
 
-  // Load theme on mount
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    setTheme(savedTheme);
-    document.documentElement.classList.toggle('light-theme', savedTheme === 'light');
-  }, []);
+  // (Removed old manual theme class toggle; ThemeProvider handles it)
 
   // Load user from localStorage on mount and listen for auth events
   useEffect(() => {
@@ -445,16 +414,16 @@ const Dashboard = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-900 overflow-auto scrollbar-custom">
+  <div className="min-h-screen bg-app overflow-auto scrollbar-custom text-primary">
       {isValidatingSession ? (
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-white text-xl">Loading...</div>
+          <div className="text-primary text-xl">Loading...</div>
         </div>
       ) : (
         <>
           {/* Fixed Navbar - Hidden on auth pages */}
           {activeView === 'dashboard' && (
-          <nav className="fixed top-0 left-0 right-0 h-16 bg-slate-800 flex items-center justify-between px-8 shadow-md z-40 border-b border-slate-700">
+          <nav className="fixed top-0 left-0 right-0 h-16 bg-surface flex items-center justify-between px-8 shadow-md z-40 border-b border-app">
             <div className="flex items-center gap-3">
               <img src={image} alt="Habit Tracker Logo" className="h-10 w-10" />
               <span className="text-xl font-bold text-blue-400 tracking-tight">HabitTracker</span>
@@ -470,15 +439,15 @@ const Dashboard = () => {
               {isAuthenticated ? (
                 <div className="relative">
                   <button
-                    className="flex items-center gap-2 pr-3 pl-1 h-14 rounded-full hover:bg-slate-700 transition group"
+                    className="flex items-center gap-2 pr-3 pl-1 h-14 rounded-full hover:bg-app-alt transition group"
                     onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                   >
                     <UserProfileBadge user={currentUser} size='sm' showEmail={false} />
-                    <FaChevronDown className={`text-slate-400 text-xs transition-transform group-hover:text-white ${showProfileDropdown ? 'rotate-180' : ''}`} />
+                    <FaChevronDown className={`text-muted text-xs transition-transform group-hover:text-primary ${showProfileDropdown ? 'rotate-180' : ''}`} />
                   </button>
                   {showProfileDropdown && (
-                    <div className="absolute right-0 top-full mt-2 w-72 bg-slate-800 rounded-xl shadow-2xl border border-slate-700 z-50 overflow-hidden">
-                      <div className="p-5 bg-gradient-to-br from-slate-800 to-slate-900 border-b border-slate-700">
+                    <div className="absolute right-0 top-full mt-2 w-72 bg-surface rounded-xl shadow-2xl border border-app z-50 overflow-hidden">
+                      <div className="p-5 bg-surface border-b border-app">
                         <div className="flex items-center gap-4">
                           <UserProfileBadge user={currentUser} size='md' />
                         </div>
@@ -486,26 +455,26 @@ const Dashboard = () => {
                       <div className="py-2">
                         <button
                           onClick={() => { setActiveSection('Profile'); setActiveView('dashboard'); setShowProfileDropdown(false); }}
-                          className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-slate-700 transition-colors"
+                          className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-app-alt transition-colors"
                         >
                           <FaUser className="text-blue-400" />
-                          <span className="text-white text-sm font-medium">Profile</span>
+                          <span className="text-primary text-sm font-medium">Profile</span>
                         </button>
                         <button
-                          onClick={() => { const newTheme = theme === 'dark' ? 'light' : 'dark'; setTheme(newTheme); localStorage.setItem('theme', newTheme); document.documentElement.classList.toggle('light-theme', newTheme === 'light'); }}
-                          className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-slate-700 transition-colors"
+                          onClick={toggleTheme}
+                          className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-app-alt transition-colors"
                         >
                           <FaPalette className="text-green-400" />
-                          <span className="text-white text-sm font-medium">Theme: {theme === 'dark' ? 'Dark' : 'Light'}</span>
+                          <span className="text-primary text-sm font-medium">Theme: {theme === 'dark' ? 'Dark' : 'Light'}</span>
                         </button>
                         <button
                           onClick={() => { setShowSettingsModal(true); setShowProfileDropdown(false); }}
-                          className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-slate-700 transition-colors"
+                          className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-app-alt transition-colors"
                         >
-                          <FaCog className="text-slate-400" />
-                          <span className="text-white text-sm font-medium">Settings</span>
+                          <FaCog className="text-muted" />
+                          <span className="text-primary text-sm font-medium">Settings</span>
                         </button>
-                        <div className="border-t border-slate-700 mt-2 pt-2">
+                        <div className="border-t border-app mt-2 pt-2">
                           <button
                             onClick={() => { localStorage.removeItem('currentUser'); localStorage.removeItem('authToken'); localStorage.removeItem('habitTracker_folders'); sessionStorage.removeItem('currentUser'); sessionStorage.removeItem('authToken'); setCurrentUser({ name: '', profilePicture: null, email: null }); setActiveView('login'); setShowProfileDropdown(false); window.dispatchEvent(new CustomEvent('userLoggedOut')); setIsAuthenticated(false); }}
                             className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-red-700 transition-colors text-red-400"
@@ -540,14 +509,14 @@ const Dashboard = () => {
       
   {/* Fixed Sidebar - Only show in dashboard view when authenticated */}
   {activeView === 'dashboard' && isAuthenticated && (
-        <aside className="fixed top-16 left-0 bottom-0 w-72 bg-slate-900 text-white flex flex-col py-6 px-4 shadow-xl border-r border-slate-800 overflow-y-auto app-scrollbar z-30">
+  <aside className="fixed top-16 left-0 bottom-0 w-72 bg-app text-primary flex flex-col py-6 px-4 shadow-xl border-r border-app overflow-y-auto app-scrollbar z-30">
         {/* Navigation Menu */}
         <nav className="mb-6">
           <ul className="space-y-2">
             {sidebarItems.map((item) => (
               <li key={item.label}>
                 <button
-                  className={`w-full flex items-center gap-3 py-3 px-4 rounded-lg hover:bg-blue-800 transition font-semibold ${activeSection === item.label ? "bg-blue-700 text-white" : ""}`}
+                  className={`w-full flex items-center gap-3 py-3 px-4 rounded-lg transition font-semibold ${activeSection === item.label ? "bg-accent text-primary" : "hover:bg-accent-soft/40"}`}
                   onClick={() => setActiveSection(item.label)}
                 >
                   <span className="text-lg">{item.icon}</span>
@@ -560,11 +529,11 @@ const Dashboard = () => {
         </nav>
         
         {/* Habit Folder Manager */}
-        <div className="flex-1 border-t border-slate-800 pt-4 space-y-3">
+  <div className="flex-1 border-t border-app pt-4 space-y-3">
           {isAuthenticated && (
             <button
               onClick={() => { setShowAreaManager(true); setActiveArea(null); }}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium"
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-surface hover:bg-app-alt text-primary text-sm font-medium border border-app"
             >
               <FaPlus className="text-xs" />
               <span>New Area</span>
@@ -575,14 +544,14 @@ const Dashboard = () => {
               <button
                 key={a.id}
                 onClick={() => { setActiveArea(a); setActiveSection(`AREA_${a.id}`); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded text-left hover:bg-slate-800 ${activeSection===`AREA_${a.id}` ? 'bg-slate-800 text-white' : 'text-slate-300'}`}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded text-left hover:bg-app-alt ${activeSection===`AREA_${a.id}` ? 'bg-app-alt text-primary font-semibold' : 'text-muted'}`}
               >
-                <FaFolder className="text-slate-500" />
+                <FaFolder className="text-muted" />
                 <span className="truncate">{a.name}</span>
               </button>
             ))}
             {areas.length === 0 && (
-              <div className="text-xs text-slate-500 px-1 py-2">No areas yet. Click "New Area" to create one.</div>
+              <div className="text-xs text-muted px-1 py-2">No areas yet. Click "New Area" to create one.</div>
             )}
           </div>
         </div>
@@ -600,10 +569,10 @@ const Dashboard = () => {
   {/* Area overlay removed; rendering inside main grid below */}
       {showSettingsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg border border-slate-700">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
-              <h4 className="text-white font-semibold">Settings</h4>
-              <button onClick={()=>setShowSettingsModal(false)} className="text-slate-400 hover:text-white">✕</button>
+          <div className="bg-surface rounded-xl shadow-2xl w-full max-w-lg border border-app">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-app">
+              <h4 className="text-primary font-semibold">Settings</h4>
+              <button onClick={()=>setShowSettingsModal(false)} className="text-muted hover:text-primary">✕</button>
             </div>
             <ProfileSettingsForm onClose={()=>setShowSettingsModal(false)} onUpdated={(p)=> setCurrentUser(p)} />
           </div>
@@ -612,7 +581,7 @@ const Dashboard = () => {
       
       {/* Conditional Content Area */}
       {activeView === 'login' ? (
-        <main className="min-h-screen w-full flex items-center justify-center bg-slate-900">
+  <main className="min-h-screen w-full flex items-center justify-center bg-app">
           <div className="w-full max-w-lg mx-auto p-6">
             <Login onSuccess={(userData) => {
               setCurrentUser(userData);
@@ -629,7 +598,7 @@ const Dashboard = () => {
           </div>
         </main>
       ) : activeView === 'signup' ? (
-        <main className="min-h-screen w-full flex items-center justify-center bg-slate-900">
+  <main className="min-h-screen w-full flex items-center justify-center bg-app">
           <div className="w-full max-w-lg mx-auto p-6">
             <Signup onSuccess={(userData) => {
               setCurrentUser(userData);
@@ -653,7 +622,7 @@ const Dashboard = () => {
           {activeSection === "Dashboard" && (
             <>
               {/* Friend Selection Control */}
-              <div className="col-span-1 md:col-span-2 bg-slate-800 rounded-xl shadow-lg p-6">
+              <div className="col-span-1 md:col-span-2 bg-surface rounded-xl shadow-lg p-6 border border-app">
                 <h3 className="text-white font-semibold mb-4">Select Friend for Comparison</h3>
                 <div className="flex gap-4">
                   <div className="flex-1">
@@ -668,7 +637,7 @@ const Dashboard = () => {
                           setFriendProgress(null);
                         }
                       }}
-                      className="w-full bg-slate-700 text-white p-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
+                      className="w-full bg-app-alt text-primary p-3 rounded-lg border border-app focus:border-accent focus:outline-none"
                     >
                       <option value="">Select a friend to compare...</option>
                       {uniqueFriends.map(f => <option key={`friend-opt-${f._id}`} value={f._id}>{f.name}</option>)}
@@ -690,7 +659,7 @@ const Dashboard = () => {
 
               {/* Four Bar Charts Layout */}
               {/* 1. Your Progress (Bar) */}
-              <div className="bg-slate-800 rounded-xl shadow-lg p-6">
+              <div className="bg-surface rounded-xl shadow-lg p-6 border border-app">
                 <h2 className="text-xl font-bold text-blue-300 mb-4">Your Progress</h2>
                 <Bar 
                   key="your-progress-bar" 
@@ -705,11 +674,11 @@ const Dashboard = () => {
                   }}
                   options={chartOptions}
                 />
-                {!progressSummary && <div className="text-slate-400 text-sm mt-4">Loading your progress...</div>}
+                {!progressSummary && <div className="text-muted text-sm mt-4">Loading your progress...</div>}
               </div>
 
               {/* 2. Selected Friend Progress (Bar) */}
-              <div className="bg-slate-800 rounded-xl shadow-lg p-6">
+              <div className="bg-surface rounded-xl shadow-lg p-6 border border-app">
                 <h2 className="text-xl font-bold text-yellow-300 mb-4">Friend's Progress</h2>
                 <div className="mb-3">
                   <select
@@ -717,7 +686,7 @@ const Dashboard = () => {
                     onChange={(e)=> {
                       const id = e.target.value; setSelectedFriend(id); if (id) fetchFriendProgressData(id); else setFriendProgress(null);
                     }}
-                    className="w-full bg-slate-700 text-white p-2 rounded border border-slate-600 text-sm"
+                    className="w-full bg-app-alt text-primary p-2 rounded border border-app text-sm focus:border-accent focus:outline-none"
                   >
                     <option value="">Select Friend...</option>
                     {uniqueFriends.map(f=> <option key={`friend-sel-${f._id}`} value={f._id}>{f.name||'Friend'}</option>)}
@@ -738,19 +707,19 @@ const Dashboard = () => {
                     options={chartOptions}
                   />
                 ) : (
-                  <div className="text-slate-400 text-sm">Select a friend to view their progress.</div>
+                  <div className="text-muted text-sm">Select a friend to view their progress.</div>
                 )}
               </div>
 
               {/* 3. Comparison (You vs Friend) */}
-              <div className="bg-slate-800 rounded-xl shadow-lg p-6">
+              <div className="bg-surface rounded-xl shadow-lg p-6 border border-app">
                 <h2 className="text-xl font-bold text-purple-300 mb-4">Comparison</h2>
                 <Bar key="comparison-bar" data={compareData} options={chartOptions} />
-                {!selectedFriend && <div className="text-slate-400 text-xs mt-3">Select a friend to populate comparison chart.</div>}
+                {!selectedFriend && <div className="text-muted text-xs mt-3">Select a friend to populate comparison chart.</div>}
               </div>
 
               {/* 4. All Friends Aggregate */}
-              <div className="bg-slate-800 rounded-xl shadow-lg p-6">
+              <div className="bg-surface rounded-xl shadow-lg p-6 border border-app">
                 <h2 className="text-xl font-bold text-green-300 mb-4">All Friends</h2>
                 <Bar
                   key="all-friends-progress-bar"
@@ -765,19 +734,19 @@ const Dashboard = () => {
                   }}
                   options={chartOptions}
                 />
-                {friendsProgress.length === 0 && <div className="text-slate-400 text-sm mt-3">No friend progress yet.</div>}
+                {friendsProgress.length === 0 && <div className="text-muted text-sm mt-3">No friend progress yet.</div>}
               </div>
               
               {/* Your Folders Section */}
               {/* Removed old habit folder grid */}
 
               {/* Quick Habit Tracker */}
-              <div className="col-span-1 md:col-span-2 bg-slate-800 rounded-xl shadow-lg p-6">
+              <div className="col-span-1 md:col-span-2 bg-surface rounded-xl shadow-lg p-6 border border-app">
                 <h3 className="text-white font-semibold mb-4">Quick Habit Tracker</h3>
-                <p className="text-slate-400 text-sm mb-4">Select a habit to track your daily progress and see streaks in charts above</p>
+                <p className="text-muted text-sm mb-4">Select a habit to track your daily progress and see streaks in charts above</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-slate-300 text-sm mb-2">Select Habit to Track</label>
+                    <label className="block text-secondary text-sm mb-2">Select Habit to Track</label>
                     <select
                       value={selectedHabit?._id || ""}
                       onChange={(e) => {
@@ -785,7 +754,7 @@ const Dashboard = () => {
                         const habit = habits.find(h => h._id === habitId);
                         setSelectedHabit(habit || null);
                       }}
-                      className="w-full bg-slate-700 text-white p-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
+                      className="w-full bg-app-alt text-primary p-3 rounded-lg border border-app focus:border-accent focus:outline-none"
                     >
                       <option value="">Select a habit to track...</option>
                       {habits.map(h => <option key={`habit-opt-${h._id}`} value={h._id}>{h.title}</option>)}
@@ -797,7 +766,7 @@ const Dashboard = () => {
                         ✓ Tracking: <span className="font-semibold">{selectedHabit.title}</span>
                       </div>
                     ) : (
-                      <div className="text-slate-400 text-sm">
+                      <div className="text-muted text-sm">
                         No habit selected for tracking
                       </div>
                     )}
@@ -809,93 +778,19 @@ const Dashboard = () => {
               </div>
               
               {/* Task Progress Widget */}
-              <div className="bg-slate-800 rounded-xl shadow-lg">
+              <div className="bg-surface rounded-xl shadow-lg border border-app">
                 <TaskProgressWidget />
               </div>
             </>
           )}
 
-          {/* Progress Section */}
+          {/* Progress Section (Summary Only) */}
           {activeSection === "Progress" && (
             <>
-              <div className="col-span-1">
+              <div className="col-span-1 md:col-span-2">
                 <ProgressSummary />
               </div>
-              <div className="col-span-1">
-                <TaskCompletion />
-              </div>
-              <div className="col-span-2 space-y-4">
-                <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
-                  <h3 className="text-white font-semibold mb-4">Progress Charts</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-slate-300 text-sm mb-1">Select Friend</label>
-                      <select
-                        value={selectedFriend || ""}
-                        onChange={(e) => {
-                          const friendId = e.target.value;
-                          setSelectedFriend(friendId);
-                          if (friendId) {
-                            fetchFriendProgressData(friendId);
-                          } else {
-                            setFriendProgress(null);
-                          }
-                        }}
-                        className="w-full bg-slate-700 text-white p-2 rounded border border-slate-600"
-                      >
-                        <option value="">None</option>
-                        {uniqueFriends.map(f => <option key={`friend-prog-${f._id}`} value={f._id}>{f.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-slate-300 text-sm mb-1">Select Group</label>
-                      <select
-                        value={selectedGroup || ""}
-                        onChange={(e) => {
-                          const groupId = e.target.value;
-                          setSelectedGroup(groupId);
-                          if (groupId) {
-                            fetchGroupProgressData(groupId);
-                          } else {
-                            setGroupProgress(null);
-                          }
-                        }}
-                        className="w-full bg-slate-700 text-white p-2 rounded border border-slate-600"
-                      >
-                        <option value="">None</option>
-                        {groups.map(g => <option key={`group-prog-${g._id}`} value={g._id}>{g.name}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-slate-700 p-4 rounded border border-slate-600">
-                      <h4 className="text-white font-medium mb-2">Your Progress</h4>
-                      <HabitTrendChart data={progressSummary?.habitStreaks || []} />
-                    </div>
-                    <div className="bg-slate-700 p-4 rounded border border-slate-600">
-                      <h4 className="text-white font-medium mb-2">Friend's Progress</h4>
-                      {selectedFriend && friendProgress ? (
-                        <HabitTrendChart data={friendProgress.habitStreaks || []} />
-                      ) : (
-                        <div className="text-slate-400 text-sm">Select a friend to view progress</div>
-                      )}
-                    </div>
-                    <div className="bg-slate-700 p-4 rounded border border-slate-600">
-                      <h4 className="text-white font-medium mb-2">Group Progress</h4>
-                      {selectedGroup && groupProgress ? (
-                        <HabitTrendChart data={groupProgress.habitStreaks || []} />
-                      ) : (
-                        <div className="text-slate-400 text-sm">Select a group to view progress</div>
-                      )}
-                    </div>
-                    <div className="bg-slate-700 p-4 rounded border border-slate-600">
-                      <h4 className="text-white font-medium mb-2">All Users Progress</h4>
-                      <HabitTrendChart data={allUsersProgress?.habitStreaks || []} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-span-1">
+              <div className="col-span-1 md:col-span-2">
                 <CalendarHeatmap />
               </div>
             </>
@@ -910,24 +805,24 @@ const Dashboard = () => {
           {areas.map(a => (
             activeSection === `AREA_${a.id}` && (
               <React.Fragment key={a.id}>
-                <div className="col-span-1 md:col-span-2 flex items-center justify-between bg-slate-800 rounded-xl p-5 border border-slate-700">
+                <div className="col-span-1 md:col-span-2 flex items-center justify-between bg-surface rounded-xl p-5 border border-app">
                   <div>
-                    <h2 className="text-white font-semibold text-lg">Area: {a.name}</h2>
-                    <div className="text-xs text-slate-400">Created {new Date(a.createdAt).toLocaleString()}</div>
+                    <h2 className="text-primary font-semibold text-lg">Area: {a.name}</h2>
+                    <div className="text-xs text-muted">Created {new Date(a.createdAt).toLocaleString()}</div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={()=> setShowAreaManager(true)} className="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-xs text-white">Manage Areas</button>
-                    <button onClick={()=> setActiveSection('Dashboard')} className="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-xs text-white">Back</button>
+                    <button onClick={()=> setShowAreaManager(true)} className="px-3 py-2 rounded bg-app-alt hover:bg-surface text-xs text-primary border border-app">Manage Areas</button>
+                    <button onClick={()=> setActiveSection('Dashboard')} className="px-3 py-2 rounded bg-app-alt hover:bg-surface text-xs text-primary border border-app">Back</button>
                   </div>
                 </div>
                 <div className="col-span-1 md:col-span-1 space-y-4">
-                  <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                  <div className="bg-surface p-4 rounded-lg border border-app">
                     <h4 className="text-sm font-semibold text-blue-300 mb-3">Create Habit in this Area</h4>
                     <HabitForm onCreated={(habit)=> {
                       setAreas(prev => prev.map(ar => ar.id === a.id ? { ...ar, habits: [habit._id, ...(ar.habits||[])] } : ar));
                     }} />
                   </div>
-                  <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                  <div className="bg-surface p-4 rounded-lg border border-app">
                     <h4 className="text-sm font-semibold text-green-300 mb-3">Create Habit Group</h4>
                     <GroupForm onCreated={(group)=> {
                       setAreas(prev => prev.map(ar => ar.id === a.id ? { ...ar, groups: [group._id, ...(ar.groups||[])] } : ar));
@@ -935,27 +830,27 @@ const Dashboard = () => {
                   </div>
                 </div>
                 <div className="col-span-1 md:col-span-1 space-y-4">
-                  <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
-                    <h5 className="text-xs uppercase tracking-wide text-slate-400 mb-2">Habits</h5>
+                  <div className="bg-surface p-4 rounded-lg border border-app">
+                    <h5 className="text-xs uppercase tracking-wide text-muted mb-2">Habits</h5>
                     {a.habits?.length ? (
-                      <ul className="space-y-1 text-sm text-slate-200 max-h-64 overflow-y-auto pr-2">
+                      <ul className="space-y-1 text-sm text-primary max-h-64 overflow-y-auto pr-2">
                         {a.habits.map(id => {
                           const habit = habits.find(h => h._id === id);
                           return <li key={`area-${a.id}-habit-${id}`} className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{ background: habit?.colorTag || '#64748b' }}></span>{habit?.title || 'Unknown Habit'}</li>;
                         })}
                       </ul>
-                    ) : <div className="text-xs text-slate-500">No habits yet.</div>}
+                    ) : <div className="text-xs text-muted">No habits yet.</div>}
                   </div>
-                  <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
-                    <h5 className="text-xs uppercase tracking-wide text-slate-400 mb-2">Groups</h5>
+                  <div className="bg-surface p-4 rounded-lg border border-app">
+                    <h5 className="text-xs uppercase tracking-wide text-muted mb-2">Groups</h5>
                     {a.groups?.length ? (
-                      <ul className="space-y-1 text-sm text-slate-200 max-h-64 overflow-y-auto pr-2">
+                      <ul className="space-y-1 text-sm text-primary max-h-64 overflow-y-auto pr-2">
                         {a.groups.map(id => {
                           const group = groups.find(g => g._id === id);
-                          return <li key={`area-${a.id}-group-${id}`} className="flex items-center gap-2"><FaUsers className="text-slate-500" />{group?.name || 'Unknown Group'}</li>;
+                          return <li key={`area-${a.id}-group-${id}`} className="flex items-center gap-2"><FaUsers className="text-muted" />{group?.name || 'Unknown Group'}</li>;
                         })}
                       </ul>
-                    ) : <div className="text-xs text-slate-500">No groups yet.</div>}
+                    ) : <div className="text-xs text-muted">No groups yet.</div>}
                   </div>
                 </div>
               </React.Fragment>

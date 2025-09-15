@@ -1,0 +1,103 @@
+:root {
+  --transition-theme: 0.25s ease;
+}
+
+.theme-dark {
+  --color-bg: #0f172a; /* slate-900 */
+  --color-bg-alt: #1e293b; /* slate-800 */
+  --color-surface: #1e293b; /* panel */
+  --color-border: #334155; /* slate-700 */
+  --color-text: #f1f5f9; /* slate-100 */
+  --color-text-muted: #94a3b8; /* slate-400 */
+  --color-accent: #3b82f6; /* blue-500 */
+  --color-accent-soft: #1d4ed8; /* blue-700 */
+  --color-danger: #dc2626; /* red-600 */
+  --color-warning: #f59e0b; /* amber-500 */
+  --color-success: #10b981; /* emerald-500 */
+}
+
+.theme-light {
+  --color-bg: #f1f5f9; /* slate-100 */
+  --color-bg-alt: #e2e8f0; /* slate-200 */
+  --color-surface: #ffffff; /* white */
+  --color-border: #cbd5e1; /* slate-300 */
+  --color-text: #0f172a; /* slate-900 */
+  --color-text-muted: #64748b; /* slate-500 */
+  --color-accent: #2563eb; /* blue-600 */
+  --color-accent-soft: #1d4ed8; /* blue-700 */
+  --color-danger: #b91c1c; /* red-700 */
+  --color-warning: #d97706; /* amber-600 */
+  --color-success: #059669; /* emerald-600 */
+}
+
+html.theme-dark, html.theme-light {
+  background: var(--color-bg);
+  color: var(--color-text);
+  transition: background var(--transition-theme), color var(--transition-theme);
+}
+
+/* Utility classes mapping to tokens */
+.bg-app { background: var(--color-bg); }
+.bg-app-alt { background: var(--color-bg-alt); }
+.bg-surface { background: var(--color-surface); }
+.border-app { border-color: var(--color-border); }
+.text-primary { color: var(--color-text); }
+.text-muted { color: var(--color-text-muted); }
+.text-accent { color: var(--color-accent); }
+.bg-accent { background: var(--color-accent); }
+.bg-accent-soft { background: var(--color-accent-soft); }
+.text-danger { color: var(--color-danger); }
+.text-warning { color: var(--color-warning); }
+.text-success { color: var(--color-success); }
+
+/* Panel styling helper */
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+}
+
+/* Scrollbar (WebKit) themed */
+.app-scrollbar::-webkit-scrollbar { width:8px; height:8px; }
+.app-scrollbar::-webkit-scrollbar-track { background: var(--color-bg-alt); }
+.app-scrollbar::-webkit-scrollbar-thumb { background: var(--color-border); border-radius:5px; }
+
+/* Transitions on panel elements */
+.panel, .bg-surface, .bg-app, .bg-app-alt { transition: background var(--transition-theme), color var(--transition-theme), border-color var(--transition-theme); }
+
+/* ------------------------------------------------------------------ */
+/* Light Theme Overrides for Legacy Tailwind Slate Classes            */
+/* Purpose: Transitional mapping so existing dark hard-coded classes  */
+/* (bg-slate-8/7/6/9, border-slate-*, text-slate-*) render appropriately
+  in light mode until all components are refactored to semantic tokens. */
+html.theme-light .bg-slate-900 { background: var(--color-bg) !important; }
+html.theme-light .bg-slate-800 { background: var(--color-surface) !important; }
+html.theme-light .bg-slate-700 { background: var(--color-bg-alt) !important; }
+html.theme-light .bg-slate-600 { background: var(--color-bg-alt) !important; }
+html.theme-light .bg-slate-900\/40 { background: var(--color-bg) !important; }
+html.theme-light .bg-slate-700\/50,
+html.theme-light .bg-slate-700\/60 { background: var(--color-bg-alt) !important; }
+
+html.theme-light .border-slate-900,
+html.theme-light .border-slate-800,
+html.theme-light .border-slate-700,
+html.theme-light .border-slate-600,
+html.theme-light .border-slate-500 { border-color: var(--color-border) !important; }
+
+html.theme-light .text-white { color: var(--color-text) !important; }
+html.theme-light .text-slate-50,
+html.theme-light .text-slate-100,
+html.theme-light .text-slate-200,
+html.theme-light .text-slate-300,
+html.theme-light .text-slate-400,
+html.theme-light .text-slate-500 { color: var(--color-text-muted) !important; }
+
+/* Buttons / chips using slate backgrounds map to surface/alt */
+html.theme-light .hover\:bg-slate-600:hover { background: var(--color-bg-alt) !important; }
+html.theme-light .hover\:bg-slate-500:hover { background: var(--color-bg-alt) !important; }
+
+/* Provide minimal opacity fallback for slate translucent panels */
+html.theme-light .bg-slate-900\/40,
+html.theme-light .bg-slate-700\/40 { background: var(--color-bg-alt) !important; }
+
+/* End transitional overrides */
