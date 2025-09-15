@@ -314,82 +314,43 @@ export default function HabitFolderManager() {
           </div>
         ) : (
           folders.map((folder) => (
-            <div key={folder.id} className="bg-slate-800 rounded border border-slate-700">
+            <div key={folder.id} className="bg-slate-800 rounded border border-slate-700 group relative overflow-hidden">
               {/* Folder Header */}
-              <div className="p-2 flex items-center justify-between">
-                <div className="flex items-center gap-2 flex-1">
-                  <button
-                    onClick={() => toggleFolder(folder.id)}
-                    className="text-slate-400 hover:text-white transition-colors"
-                  >
-                    {expandedFolders.has(folder.id) ? 
-                      <FaChevronDown className="text-xs" /> : 
-                      <FaChevronRight className="text-xs" />
-                    }
-                  </button>
-                  
+              <div className="p-2 flex items-center gap-2 relative">
+                <button
+                  onClick={() => toggleFolder(folder.id)}
+                  className="text-slate-400 hover:text-white transition-colors"
+                >
                   {expandedFolders.has(folder.id) ? 
-                    <FaFolderOpen className="text-yellow-400" /> : 
-                    <FaFolder className="text-yellow-400" />
+                    <FaChevronDown className="text-xs" /> : 
+                    <FaChevronRight className="text-xs" />
                   }
-
-                  {editingFolder?.id === folder.id ? (
-                    <div className="flex items-center gap-2 flex-1">
-                      <input
-                        type="text"
-                        value={editingFolder.name}
-                        onChange={(e) => setEditingFolder({...editingFolder, name: e.target.value})}
-                        className="flex-1 p-1 bg-slate-600 text-white rounded border border-slate-500 focus:border-blue-500 focus:outline-none text-sm"
-                        onKeyPress={(e) => e.key === 'Enter' && saveEditFolder()}
-                      />
-                      <button
-                        onClick={saveEditFolder}
-                        className="text-green-400 hover:text-green-300 transition-colors"
-                      >
-                        <FaSave className="text-xs" />
-                      </button>
-                      <button
-                        onClick={cancelEditFolder}
-                        className="text-red-400 hover:text-red-300 transition-colors"
-                      >
-                        <FaTimes className="text-xs" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex-1">
-                      <div className="text-white font-medium text-xs">{folder.name}</div>
-                      <div className="text-slate-400 text-xs">
-                        {folder.habits.length} habits
-                      </div>
-                    </div>
-                  )}
+                </button>
+                {expandedFolders.has(folder.id) ? 
+                  <FaFolderOpen className="text-yellow-400" /> : 
+                  <FaFolder className="text-yellow-400" />
+                }
+                <div className="flex-1 min-w-0">
+                  <div className="text-white font-medium text-xs truncate">{folder.name}</div>
+                  <div className="text-slate-400 text-[10px] tracking-wide">{folder.habits.length} habits</div>
                 </div>
-
-                {!editingFolder && (
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => setAddingHabitToFolder(folder.id)}
-                      className="p-1 text-slate-400 hover:text-green-400 transition-colors"
-                      title="Add Habit"
-                    >
-                      <FaPlus className="text-xs" />
-                    </button>
-                    <button
-                      onClick={() => startEditingFolder(folder)}
-                      className="p-1 text-slate-400 hover:text-blue-400 transition-colors"
-                      title="Edit Folder"
-                    >
-                      <FaEdit className="text-xs" />
-                    </button>
-                    <button
-                      onClick={() => deleteFolder(folder.id)}
-                      className="p-1 text-slate-400 hover:text-red-400 transition-colors"
-                      title="Delete Folder"
-                    >
-                      <FaTrash className="text-xs" />
-                    </button>
-                  </div>
-                )}
+                {/* Hover Action Buttons (Edit / Delete) */}
+                <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => startEditingFolder(folder)}
+                    className="p-1 rounded bg-slate-700/70 hover:bg-blue-600 text-slate-300 hover:text-white shadow-sm"
+                    title="Edit Folder"
+                  >
+                    <FaEdit className="text-[10px]" />
+                  </button>
+                  <button
+                    onClick={() => deleteFolder(folder.id)}
+                    className="p-1 rounded bg-slate-700/70 hover:bg-red-600 text-slate-300 hover:text-white shadow-sm"
+                    title="Delete Folder"
+                  >
+                    <FaTrash className="text-[10px]" />
+                  </button>
+                </div>
               </div>
 
               {/* Add Habit Form */}
@@ -425,6 +386,15 @@ export default function HabitFolderManager() {
               {/* Habits List */}
               {expandedFolders.has(folder.id) && (
                 <div className="px-2 pb-2 space-y-1">
+                  {/* Add Habit trigger inside expanded content */}
+                  {addingHabitToFolder !== folder.id && (
+                    <div className="flex justify-end mb-1">
+                      <button
+                        onClick={() => setAddingHabitToFolder(folder.id)}
+                        className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[10px] uppercase tracking-wide"
+                      >Add Habit</button>
+                    </div>
+                  )}
                   {folder.habits.length === 0 ? (
                     <div className="text-slate-500 text-xs text-center py-2">
                       No habits in this folder yet
@@ -548,6 +518,44 @@ export default function HabitFolderManager() {
             <div className="bg-slate-700 p-3 rounded">
               <h4 className="text-white text-xs font-medium mb-2">Habit Tracker</h4>
               <HabitTracker />
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Edit Folder Modal */}
+      {editingFolder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onKeyDown={(e)=> e.key==='Escape' && cancelEditFolder()}>
+          <div className="bg-slate-800 w-full max-w-sm rounded-lg border border-slate-700 p-5 shadow-xl relative">
+            <button
+              className="absolute top-2 right-2 text-slate-400 hover:text-white"
+              onClick={cancelEditFolder}
+            >
+              <FaTimes className="text-sm" />
+            </button>
+            <h3 className="text-white font-semibold text-sm mb-3">Edit Folder</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] uppercase tracking-wide text-slate-400 mb-1">Folder Name</label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={editingFolder.name}
+                  onChange={(e) => setEditingFolder({...editingFolder, name: e.target.value})}
+                  onKeyPress={(e)=> e.key==='Enter' && saveEditFolder()}
+                  className="w-full p-2 bg-slate-700 text-white rounded border border-slate-600 focus:border-blue-500 focus:outline-none text-sm"
+                  placeholder="Enter folder name"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={saveEditFolder}
+                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium"
+                >Save</button>
+                <button
+                  onClick={cancelEditFolder}
+                  className="flex-1 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded text-xs"
+                >Cancel</button>
+              </div>
             </div>
           </div>
         </div>

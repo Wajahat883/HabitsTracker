@@ -74,8 +74,25 @@ const Login = ({ onSuccess }) => {
     persistAuth({ profile: finalProfile, accessToken: localStorage.getItem('authToken'), refreshToken: localStorage.getItem('refreshToken') });
     if (onSuccess) onSuccess(finalProfile);
     window.dispatchEvent(new CustomEvent('userLoggedIn', { detail: finalProfile }));
-    setUserStreak(7);
-    setStreakPopup(true);
+    // Dynamically fetch current streak (longest streak across habits) and fallback to 1 for first-time users
+    try {
+      const res = await fetch(`${API_URL}/api/progress/summary?range=30d`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
+        credentials: 'include'
+      });
+      if (res.ok) {
+        const json = await res.json().catch(()=>({}));
+        const data = json.data || json; // ApiResponse wraps in data
+        const longest = (data && typeof data.longestStreak === 'number') ? data.longestStreak : 0;
+        setUserStreak(longest > 0 ? longest : 1); // default to 1 if no streak yet
+      } else {
+        setUserStreak(1);
+      }
+    } catch {
+      setUserStreak(1);
+    }
+    setStreakPopup(true); // show popup after streak resolved (fast request)
     setTimeout(() => {
       setStreakPopup(false);
       if (!onSuccess) navigate('/dashboard');
@@ -134,7 +151,8 @@ const Login = ({ onSuccess }) => {
   const handleGoogleError = () => showToast('Google Login Failed', 'error');
 
   return (
-    <div className="min-h-screen flex bg-gray-100">
+    <div className="auth-bg">
+      <div className="auth-shell">
       {toast.show && <Toast message={toast.message} type={toast.type} />}
       {streakPopup && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-40">
@@ -145,52 +163,57 @@ const Login = ({ onSuccess }) => {
           </div>
         </div>
       )}
-      <div className="w-full md:w-1/2 flex items-center justify-center p-6 md:p-12">
-        <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8 relative">
-          <h2 className="text-2xl font-bold mb-6 text-center">Sign in to HabitTracker</h2>
+      <div className="auth-panel">
+        <div className="auth-card p-8 md:p-10 relative">
+          <h2 className="auth-heading text-center mb-6">Welcome Back</h2>
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
-              <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="you@example.com" />
+              <label className="auth-label">Email</label>
+              <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required className="auth-input" placeholder="you@example.com" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Password</label>
+              <label className="auth-label">Password</label>
               <div className="relative">
-                <input type={showPassword? 'text':'password'} value={password} onChange={(e)=>setPassword(e.target.value)} required className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none pr-10" placeholder="••••••••" />
-                <button type="button" onClick={()=>setShowPassword(s=>!s)} className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700">
+                <input type={showPassword? 'text':'password'} value={password} onChange={(e)=>setPassword(e.target.value)} required className="auth-input pr-12" placeholder="••••••••" />
+                <button type="button" onClick={()=>setShowPassword(s=>!s)} className="absolute inset-y-0 right-2 px-2 flex items-center text-slate-500 hover:text-slate-300 text-xs font-medium tracking-wide">
                   {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" className="form-checkbox" />
-                <span>Remember me</span>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" className="w-4 h-4 rounded border-slate-400" />
+                <span className="auth-small">Remember me</span>
               </label>
-              <a href="#" className="text-purple-700 hover:underline">Forgot Password?</a>
+              <a href="#" className="auth-alt-link">Forgot Password?</a>
             </div>
-            <button type="submit" disabled={loading} className="w-full bg-purple-700 text-white py-2 rounded-lg font-semibold hover:bg-purple-800 disabled:opacity-60">
-              {loading ? <Loader /> : 'Sign in'}
+            <button type="submit" disabled={loading} className="auth-submit">
+              {loading ? <Loader /> : 'Sign In'}
             </button>
           </form>
-          <div className="my-6 flex items-center">
-            <span className="flex-grow border-b" />
-            <span className="mx-3 text-gray-400 text-sm">OR</span>
-            <span className="flex-grow border-b" />
+          <div className="auth-divider">
+            <span>OR</span>
           </div>
           <GoogleLoginButton onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
-          <p className="mt-6 text-center text-sm text-gray-600">No account? <a href="/signup" className="text-purple-700 font-medium hover:underline">Create one</a></p>
+          <p className="mt-8 text-center auth-small">No account? <a href="/signup" className="auth-alt-link">Create one</a></p>
         </div>
       </div>
-      <div className="hidden md:flex w-1/2 bg-gradient-to-br from-purple-900 via-blue-900 to-black flex-col justify-center items-center p-12 text-white relative">
-        <div className="mb-10 text-center">
-          <h3 className="text-3xl font-bold mb-4">Build Better Habits</h3>
-          <p className="max-w-sm text-purple-100">Track habits, build streaks, and stay motivated with analytics and inspiration.</p>
+      <div className="auth-side">
+        <div className="feature-badge"><span>Habit Insight Engine</span></div>
+        <div className="space-y-7 relative z-10">
+          <h2 className="auth-heading">Build Better Habits</h2>
+          <p className="text-sm leading-relaxed text-slate-200 max-w-md">Track, analyze and sustain your routines with real‑time streaks, motivational insights and a social layer that keeps you accountable.</p>
+          <div className="glass-tile">
+            <h4 className="text-sm font-semibold tracking-wide uppercase">Why Join?</h4>
+            <ul className="text-xs space-y-2 text-slate-100/90">
+              <li>• Smart streak tracking with tolerance</li>
+              <li>• Social progress & friend presence</li>
+              <li>• Year heat map & habit insights</li>
+              <li>• Fast theme switching</li>
+            </ul>
+          </div>
         </div>
-        <div className="bg-white/10 backdrop-blur rounded-xl p-6 w-64 text-center shadow-lg">
-          <p className="text-purple-200 mb-2">Current Community Streak</p>
-          <p className="text-4xl font-extrabold">🔥 21</p>
-        </div>
+      </div>
       </div>
     </div>
   );

@@ -1,20 +1,16 @@
-import express from "express";
-import { uploadProfilePicture } from "../Controllers/profile.controller.js";
-import multer from "multer";
-import  authenticate  from "../Middleware/authMiddleware.js";
+import express from 'express';
+import multer from 'multer';
+import authenticate from '../Middleware/authMiddleware.js';
+import { uploadProfilePicture } from '../Controllers/profile.controller.js';
 
 const router = express.Router();
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/");
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname));
-  },
-});
+// Use memory storage; Cloudinary SDK reads buffer (we'll write buffer to temp file automatically via multer temp path or pass path if disk needed)
+// Here we still leverage disk if needed; but simpler: use memory and write to temp file not required as cloudinary.uploader.upload_stream could be used.
+const storage = multer.diskStorage({}); // minimal disk usage; could switch to memory if desired
 const upload = multer({ storage });
 
-router.post("/upload-profile-picture", authenticate, upload.single("profilePicture"), uploadProfilePicture);
+// Unified profile update (username + picture)
+router.put('/profile', authenticate, upload.single('profilePicture'), uploadProfilePicture);
 
 export default router;

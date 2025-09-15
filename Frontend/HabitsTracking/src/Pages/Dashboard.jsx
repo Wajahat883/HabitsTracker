@@ -9,7 +9,6 @@ import NotificationBell from "../Components/Notifications/NotificationBell";
 import UserSearch from "../Components/Friends/UserSearch";
 import AllUsersList from "../Components/Friends/AllUsersList";
 import SocialFeaturesTest from "../Components/Common/SocialFeaturesTest";
-import TaskProgressWidget from "../Components/Common/TaskProgressWidget";
 // Area manager feature (re-added per new requirements)
 import AreaManagerModal from "../Components/Areas/AreaManagerModal";
 import { Bar, Doughnut } from "react-chartjs-2";
@@ -42,12 +41,12 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tool
 const sidebarItems = [
   { label: "Dashboard", icon: <FaHome /> },
   { label: "Progress", icon: <FaRegSun /> },
-  { label: "Habits", icon: <FaInfinity /> },
+  // { label: "Habits", icon: <FaInfinity /> }, // removed per request
   { label: "Habit Todo", icon: <FaListAlt /> },
-  { label: "Off Mode", icon: <FaPause /> },
-  { label: "Payment", icon: <FaCreditCard /> },
-  // Removed App Settings from sidebar; now inside profile dropdown
-  { label: "Resources", icon: <FaLink /> },
+  // Removed Off Mode, Payment, and Resources per request; keep code reference for potential future re-enable
+  // { label: "Off Mode", icon: <FaPause /> },
+  // { label: "Payment", icon: <FaCreditCard /> },
+  // { label: "Resources", icon: <FaLink /> },
   { label: "Friends", icon: <FaUserFriends /> },
   { label: "Status", icon: <FaCheckCircle /> },
 ];
@@ -120,6 +119,8 @@ const Dashboard = () => {
     } catch { return false; }
   });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showProfileEditModal, setShowProfileEditModal] = useState(false);
+  const [profileForm, setProfileForm] = useState({ username: '', profilePicture: null, preview: null });
   const { compareData, setFriendData, setCompareData } = useChartData();
   const {
     habits,
@@ -454,13 +455,6 @@ const Dashboard = () => {
                       </div>
                       <div className="py-2">
                         <button
-                          onClick={() => { setActiveSection('Profile'); setActiveView('dashboard'); setShowProfileDropdown(false); }}
-                          className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-app-alt transition-colors"
-                        >
-                          <FaUser className="text-blue-400" />
-                          <span className="text-primary text-sm font-medium">Profile</span>
-                        </button>
-                        <button
                           onClick={toggleTheme}
                           className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-app-alt transition-colors"
                         >
@@ -468,11 +462,13 @@ const Dashboard = () => {
                           <span className="text-primary text-sm font-medium">Theme: {theme === 'dark' ? 'Dark' : 'Light'}</span>
                         </button>
                         <button
-                          onClick={() => { setShowSettingsModal(true); setShowProfileDropdown(false); }}
+                          onClick={() => { 
+                            setProfileForm({ username: currentUser?.name || currentUser?.username || '', profilePicture: null, preview: currentUser?.profilePicture || null });
+                            setShowProfileEditModal(true); setShowProfileDropdown(false); }}
                           className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-app-alt transition-colors"
                         >
-                          <FaCog className="text-muted" />
-                          <span className="text-primary text-sm font-medium">Settings</span>
+                          <FaUser className="text-purple-400" />
+                          <span className="text-primary text-sm font-medium">Edit Profile</span>
                         </button>
                         <div className="border-t border-app mt-2 pt-2">
                           <button
@@ -556,6 +552,61 @@ const Dashboard = () => {
           </div>
         </div>
         </aside>
+      )}
+      {showProfileEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-surface border border-app rounded-xl w-full max-w-md p-6 relative">
+            <button className="absolute top-3 right-3 text-muted hover:text-primary" onClick={()=> setShowProfileEditModal(false)}>✕</button>
+            <h3 className="text-lg font-semibold text-primary mb-4">Update Profile</h3>
+            <form onSubmit={async (e)=> {
+              e.preventDefault();
+              try {
+                const formData = new FormData();
+                if (profileForm.username) formData.append('username', profileForm.username);
+                if (profileForm.profilePicture) formData.append('profilePicture', profileForm.profilePicture);
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/user/profile`, {
+                  method: 'PUT',
+                  headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
+                  credentials: 'include',
+                  body: formData
+                });
+                const json = await res.json();
+                if (res.ok) {
+                  const updated = json.user || {};
+                  const merged = { ...currentUser, name: updated.username || updated.name || profileForm.username, profilePicture: updated.profilePicture };
+                  setCurrentUser(merged);
+                  localStorage.setItem('currentUser', JSON.stringify(merged));
+                  sessionStorage.setItem('currentUser', JSON.stringify(merged));
+                  window.dispatchEvent(new CustomEvent('profileUpdated', { detail: merged }));
+                  setShowProfileEditModal(false);
+                } else {
+                  console.warn('Profile update failed', json.message);
+                }
+              } catch(err) { console.error(err); }
+            }} className="space-y-5">
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-muted mb-2">Username</label>
+                <input type="text" value={profileForm.username} onChange={(e)=> setProfileForm(p=> ({...p, username: e.target.value}))} className="w-full bg-app-alt border border-app rounded-lg p-3 text-primary focus:outline-none focus:border-accent" placeholder="Enter username" />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-muted mb-2">Profile Picture</label>
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 rounded-full overflow-hidden bg-app-alt flex items-center justify-center text-xl font-semibold text-primary border border-app">
+                    {profileForm.preview ? <img src={profileForm.preview} alt="preview" className="h-full w-full object-cover" /> : (profileForm.username || currentUser?.name || 'U').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1">
+                    <input type="file" accept="image/*" onChange={(e)=> { const file=e.target.files?.[0]; if(file){ setProfileForm(p=> ({...p, profilePicture: file, preview: URL.createObjectURL(file)})); } }} className="block w-full text-xs text-muted file:mr-3 file:py-2 file:px-3 file:rounded file:border-0 file:bg-accent file:text-primary file:text-xs hover:file:bg-accent-soft" />
+                    <p className="text-[10px] text-muted mt-1">JPG/PNG up to ~2MB. Center-cropped to square.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm">Save</button>
+                <button type="button" onClick={()=> setShowProfileEditModal(false)} className="flex-1 bg-app-alt hover:bg-surface border border-app text-primary font-medium py-2 rounded-lg text-sm">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
   {/* Area Manager Modal */}
     {showAreaManager && (
@@ -777,10 +828,6 @@ const Dashboard = () => {
                 </div>
               </div>
               
-              {/* Task Progress Widget */}
-              <div className="bg-surface rounded-xl shadow-lg border border-app">
-                <TaskProgressWidget />
-              </div>
             </>
           )}
 
