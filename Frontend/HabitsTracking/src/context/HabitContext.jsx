@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import useSocket from './useSocket';
 import HabitContext from './HabitContextInternal';
 import { fetchHabits } from '../api/habits';
 import { fetchProgressSummary } from '../api/progress';
@@ -21,18 +22,21 @@ export const HabitProvider = ({ children }) => {
   const [friends, setFriends] = useState([]);
   const [habitListFilter, setHabitListFilter] = useState('active');
   const [lastCreatedHabit, setLastCreatedHabit] = useState(null);
+  const { emitHabitUpdate } = useSocket() || {};
 
-  const loadHabits = async () => {
+  const loadHabits = useCallback(async () => {
     setHabitLoading(true);
     try {
       const data = await fetchHabits();
       setHabits(data);
+  // Broadcast a bulk refresh event for other tabs / friends (minimal payload)
+  emitHabitUpdate && emitHabitUpdate('all', { type: 'refresh' });
     } catch (error) {
       console.error('Failed to load habits:', error);
     } finally {
       setHabitLoading(false);
     }
-  };
+  }, [emitHabitUpdate]);
 
   const loadProgress = async () => {
     try {
@@ -86,7 +90,7 @@ export const HabitProvider = ({ children }) => {
         setFriends([]);
       }
     })();
-  }, []);
+  }, [loadHabits]);
 
   const refreshFriends = async () => {
     try {

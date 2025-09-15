@@ -6,6 +6,7 @@ import Dashboard from "./Pages/Dashboard";
 import { ChartDataProvider } from "./context/ChartDataContext";
 import { ThemeProvider } from './context/ThemeContext';
 import { HabitProvider } from "./context/HabitContext";
+import { SocketProvider } from "./context/SocketContext";
 
 function App() {
   return (
@@ -17,7 +18,9 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/dashboard" element={
             <HabitProvider>
-              <Dashboard />
+              <SocketProvider token={localStorage.getItem('authToken') || sessionStorage.getItem('authToken')}>
+                <Dashboard />
+              </SocketProvider>
             </HabitProvider>
           } />
           <Route path="*" element={<Navigate to="/login" />} />

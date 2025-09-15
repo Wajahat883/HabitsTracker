@@ -10,7 +10,8 @@
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.19.0",
     "mongoose": "^8.18.1",
-    "multer": "^2.0.2",
+  "multer": "^2.0.2",
+  "socket.io": "^4.7.5",
     "nodemailer": "^7.0.6"
   },
   "name": "backend",

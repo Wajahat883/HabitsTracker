@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useChartData } from "../context/useChartData";
 import { useHabitContext } from "../context/useHabitContext";
 import HabitForm from "../Components/Habits/HabitForm";
@@ -148,6 +148,17 @@ const Dashboard = () => {
     fetchFriendProgressData,
     fetchGroupProgressData,
   } = useHabitContext();
+
+  // Deduplicate friends by _id to avoid duplicate option keys
+  const uniqueFriends = useMemo(() => {
+    const seen = new Set();
+    return (friends || []).filter(f => {
+      if (!f || !f._id) return false;
+      if (seen.has(f._id)) return false;
+      seen.add(f._id);
+      return true;
+    });
+  }, [friends]);
 
   // Update charts with real data including friends and groups
   useEffect(() => {
@@ -529,7 +540,7 @@ const Dashboard = () => {
       
   {/* Fixed Sidebar - Only show in dashboard view when authenticated */}
   {activeView === 'dashboard' && isAuthenticated && (
-        <aside className="fixed top-16 left-0 bottom-0 w-72 bg-slate-900 text-white flex flex-col py-6 px-4 shadow-xl border-r border-slate-800 overflow-y-auto scrollbar-custom z-30">
+        <aside className="fixed top-16 left-0 bottom-0 w-72 bg-slate-900 text-white flex flex-col py-6 px-4 shadow-xl border-r border-slate-800 overflow-y-auto app-scrollbar z-30">
         {/* Navigation Menu */}
         <nav className="mb-6">
           <ul className="space-y-2">
@@ -660,7 +671,7 @@ const Dashboard = () => {
                       className="w-full bg-slate-700 text-white p-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
                     >
                       <option value="">Select a friend to compare...</option>
-                      {friends.map(f => <option key={f._id} value={f._id}>{f.name}</option>)}
+                      {uniqueFriends.map(f => <option key={`friend-opt-${f._id}`} value={f._id}>{f.name}</option>)}
                     </select>
                   </div>
                   {selectedFriend && (
@@ -709,7 +720,7 @@ const Dashboard = () => {
                     className="w-full bg-slate-700 text-white p-2 rounded border border-slate-600 text-sm"
                   >
                     <option value="">Select Friend...</option>
-                    {friends.map(f=> <option key={f._id} value={f._id}>{f.name||'Friend'}</option>)}
+                    {uniqueFriends.map(f=> <option key={`friend-sel-${f._id}`} value={f._id}>{f.name||'Friend'}</option>)}
                   </select>
                 </div>
                 {selectedFriend && friendProgress ? (
@@ -777,7 +788,7 @@ const Dashboard = () => {
                       className="w-full bg-slate-700 text-white p-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
                     >
                       <option value="">Select a habit to track...</option>
-                      {habits.map(h => <option key={h._id} value={h._id}>{h.title}</option>)}
+                      {habits.map(h => <option key={`habit-opt-${h._id}`} value={h._id}>{h.title}</option>)}
                     </select>
                   </div>
                   <div className="flex items-end">
@@ -833,7 +844,7 @@ const Dashboard = () => {
                         className="w-full bg-slate-700 text-white p-2 rounded border border-slate-600"
                       >
                         <option value="">None</option>
-                        {friends.map(f => <option key={f._id} value={f._id}>{f.name}</option>)}
+                        {uniqueFriends.map(f => <option key={`friend-prog-${f._id}`} value={f._id}>{f.name}</option>)}
                       </select>
                     </div>
                     <div>
@@ -852,7 +863,7 @@ const Dashboard = () => {
                         className="w-full bg-slate-700 text-white p-2 rounded border border-slate-600"
                       >
                         <option value="">None</option>
-                        {groups.map(g => <option key={g._id} value={g._id}>{g.name}</option>)}
+                        {groups.map(g => <option key={`group-prog-${g._id}`} value={g._id}>{g.name}</option>)}
                       </select>
                     </div>
                   </div>
@@ -930,7 +941,7 @@ const Dashboard = () => {
                       <ul className="space-y-1 text-sm text-slate-200 max-h-64 overflow-y-auto pr-2">
                         {a.habits.map(id => {
                           const habit = habits.find(h => h._id === id);
-                          return <li key={id} className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{ background: habit?.colorTag || '#64748b' }}></span>{habit?.title || 'Unknown Habit'}</li>;
+                          return <li key={`area-${a.id}-habit-${id}`} className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{ background: habit?.colorTag || '#64748b' }}></span>{habit?.title || 'Unknown Habit'}</li>;
                         })}
                       </ul>
                     ) : <div className="text-xs text-slate-500">No habits yet.</div>}
@@ -941,7 +952,7 @@ const Dashboard = () => {
                       <ul className="space-y-1 text-sm text-slate-200 max-h-64 overflow-y-auto pr-2">
                         {a.groups.map(id => {
                           const group = groups.find(g => g._id === id);
-                          return <li key={id} className="flex items-center gap-2"><FaUsers className="text-slate-500" />{group?.name || 'Unknown Group'}</li>;
+                          return <li key={`area-${a.id}-group-${id}`} className="flex items-center gap-2"><FaUsers className="text-slate-500" />{group?.name || 'Unknown Group'}</li>;
                         })}
                       </ul>
                     ) : <div className="text-xs text-slate-500">No groups yet.</div>}
