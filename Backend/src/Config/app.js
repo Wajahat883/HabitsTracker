@@ -15,6 +15,10 @@ import { errorHandler } from '../Middleware/authMiddleware.js';
 
 
 const app = express();
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import morgan from 'morgan';
+import compression from 'compression';
 
 
 // Dynamic CORS to support auto-incrementing Vite dev ports
@@ -28,6 +32,12 @@ app.use(cors({
     },
     credentials: true
 }));
+
+// Security & performance middleware
+app.use(helmet());
+app.use(compression());
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 400 }));
+app.use(morgan('dev'));
 
 app.use(express.json({ limit: "20kb" }));
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
@@ -43,6 +53,14 @@ app.use("/api/groups", groupRoutes);
 app.use("/api/friends", friendRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/folders", folderRoutes);
+// Simple health & metrics endpoints
+app.get('/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
+app.get('/metrics', (req, res) => {
+    res.set('Content-Type', 'application/json');
+    // Placeholder basic metrics; can be extended with prom-client later
+    res.send(JSON.stringify({ uptime: process.uptime(), memory: process.memoryUsage().rss }));
+});
+
 app.use(errorHandler);
 
 export default app;

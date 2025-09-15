@@ -10,6 +10,8 @@ const habitLogSchema = new mongoose.Schema({
 
 habitLogSchema.index({ habit: 1, date: 1 }, { unique: true });
 habitLogSchema.index({ user: 1, date: 1 });
+// For quickly fetching a user's recent activity timeline
+habitLogSchema.index({ user: 1, createdAt: -1 });
 
 const HabitLog = mongoose.model("HabitLog", habitLogSchema);
 export default HabitLog;

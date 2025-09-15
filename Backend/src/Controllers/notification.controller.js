@@ -2,6 +2,7 @@ import Notification from "../Models/Notification.js";
 import User from "../Models/User.js";
 import ApiError from "../utils/ApiErros.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+// Socket instance will be retrieved via req.app.get('io') in route handlers.
 
 // Get user notifications
 export const getNotifications = async (req, res, next) => {
@@ -59,7 +60,7 @@ export const getUnreadCount = async (req, res, next) => {
 };
 
 // Create notification helper function
-export const createNotification = async (userId, type, title, message, from = null, data = {}) => {
+export const createNotification = async (userId, type, title, message, from = null, data = {}, appRef = null) => {
   try {
     const notification = await Notification.create({
       user: userId,
@@ -69,6 +70,26 @@ export const createNotification = async (userId, type, title, message, from = nu
       message,
       data
     });
+    // Emit real-time notification + updated unread count
+  const io = appRef?.get?.('io');
+  if (io) {
+      try {
+        const unread = await Notification.countDocuments({ user: userId, read: false });
+        io.to(`user:${userId}`).emit('notification:new', {
+          _id: notification._id,
+            type: notification.type,
+            title: notification.title,
+            message: notification.message,
+            data: notification.data,
+            createdAt: notification.createdAt,
+            read: notification.read,
+            actionTaken: notification.actionTaken
+        });
+        io.to(`user:${userId}`).emit('notifications:unreadCount', { count: unread });
+      } catch (emitErr) {
+        console.error('Socket emit failed (notification)', emitErr.message);
+      }
+    }
     
     return notification;
   } catch (error) {

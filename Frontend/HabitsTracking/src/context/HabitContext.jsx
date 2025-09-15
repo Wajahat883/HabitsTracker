@@ -24,13 +24,13 @@ export const HabitProvider = ({ children }) => {
   const [lastCreatedHabit, setLastCreatedHabit] = useState(null);
   const { emitHabitUpdate } = useSocket() || {};
 
-  const loadHabits = useCallback(async () => {
+  const loadHabits = useCallback(async (suppressEmit = false) => {
     setHabitLoading(true);
     try {
       const data = await fetchHabits();
       setHabits(data);
   // Broadcast a bulk refresh event for other tabs / friends (minimal payload)
-  emitHabitUpdate && emitHabitUpdate('all', { type: 'refresh' });
+      if (!suppressEmit && emitHabitUpdate) emitHabitUpdate('all', { type: 'refresh' });
     } catch (error) {
       console.error('Failed to load habits:', error);
     } finally {
@@ -90,6 +90,17 @@ export const HabitProvider = ({ children }) => {
         setFriends([]);
       }
     })();
+  }, [loadHabits]);
+
+  // Listen for habit update socket events to refresh locally (without re-broadcast)
+  useEffect(() => {
+  const handler = () => {
+      // For granular updates we could patch state; simpler: full refresh
+      loadHabits(true);
+      loadProgress();
+    };
+    window.addEventListener('habitUpdated', handler);
+    return () => window.removeEventListener('habitUpdated', handler);
   }, [loadHabits]);
 
   const refreshFriends = async () => {

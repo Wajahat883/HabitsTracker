@@ -1,4 +1,5 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:4000';
+// Use 5000 (backend default) instead of 4000 to prevent mismatch / connection refused
+const API_BASE = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000';
 // debug log once
 if (typeof window !== 'undefined' && !window.__HABIT_API_BASE_LOGGED__) {
   window.__HABIT_API_BASE_LOGGED__ = true;

@@ -53,7 +53,7 @@ const habitSchema = new mongoose.Schema({
 
 habitSchema.index({ user: 1, isArchived: 1 });
 habitSchema.index({ user: 1, frequencyType: 1 });
-habitSchema.index({ group: 1 });
+// group field already declared with index:true; removing duplicate explicit index
 
 const Habit = mongoose.model("Habit", habitSchema);
 export default Habit;

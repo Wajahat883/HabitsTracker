@@ -3,6 +3,7 @@ import HabitLog from "../Models/HabitLog.js";
 import Group from "../Models/Group.js";
 import ApiError from "../utils/ApiErros.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+// Socket.IO instance accessed lazily via req.app.get('io') to avoid import cycle
 
 // ---------------- Frequency / Streak Helpers ----------------
 const dateStrToDate = (s) => new Date(s + 'T00:00:00Z');
@@ -93,6 +94,8 @@ export const createHabit = async (req, res, next) => {
       throw new ApiError(400, 'daysOfWeek required for weekly habits');
     }
     const habit = await Habit.create({ user: req.user.userId, title, description, frequencyType, daysOfWeek, timesPerPeriod, colorTag, icon });
+  const io = req.app.get('io');
+  if (io) io.to(`user:${req.user.userId}`).emit('habit:updated', { type: 'habitCreated', habit });
     return res.status(201).json(new ApiResponse(201, habit, 'Habit created'));
   } catch (e) { next(e); }
 };
@@ -130,6 +133,8 @@ export const updateHabit = async (req, res, next) => {
     }
     const habit = await Habit.findOneAndUpdate({ _id: req.params.id, user: req.user.userId }, updates, { new: true });
     if (!habit) throw new ApiError(404, 'Habit not found');
+  const io = req.app.get('io');
+  if (io) io.to(`user:${req.user.userId}`).emit('habit:updated', { type: 'habitUpdated', habit });
     return res.json(new ApiResponse(200, habit, 'Habit updated'));
   } catch (e) { next(e); }
 };
@@ -138,6 +143,8 @@ export const archiveHabit = async (req, res, next) => {
   try {
     const habit = await Habit.findOneAndUpdate({ _id: req.params.id, user: req.user.userId }, { isArchived: true }, { new: true });
     if (!habit) throw new ApiError(404, 'Habit not found');
+  const io = req.app.get('io');
+  if (io) io.to(`user:${req.user.userId}`).emit('habit:updated', { type: 'habitArchived', habitId: habit._id });
     return res.json(new ApiResponse(200, { success: true }, 'Archived'));
   } catch (e) { next(e); }
 };
@@ -146,6 +153,8 @@ export const restoreHabit = async (req, res, next) => {
   try {
     const habit = await Habit.findOneAndUpdate({ _id: req.params.id, user: req.user.userId }, { isArchived: false }, { new: true });
     if (!habit) throw new ApiError(404, 'Habit not found');
+  const io = req.app.get('io');
+  if (io) io.to(`user:${req.user.userId}`).emit('habit:updated', { type: 'habitRestored', habit });
     return res.json(new ApiResponse(200, habit, 'Restored'));
   } catch (e) { next(e); }
 };
@@ -154,6 +163,8 @@ export const deleteHabit = async (req, res, next) => {
   try {
     const habit = await Habit.findOneAndUpdate({ _id: req.params.id, user: req.user.userId }, { isArchived: true }, { new: true });
     if (!habit) throw new ApiError(404, 'Habit not found');
+  const io = req.app.get('io');
+  if (io) io.to(`user:${req.user.userId}`).emit('habit:updated', { type: 'habitDeleted', habitId: habit._id });
     return res.json(new ApiResponse(200, { success: true }, 'Soft deleted (archived)'));
   } catch (e) { next(e); }
 };
@@ -182,6 +193,8 @@ export const createOrUpdateLog = async (req, res, next) => {
       { status, note },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
+  const io = req.app.get('io');
+  if (io) io.to(`user:${req.user.userId}`).emit('habit:updated', { type: 'logUpdated', habitId: habit._id, date, status, log });
     return res.status(201).json(new ApiResponse(201, log, 'Log saved'));
   } catch (e) { next(e); }
 };

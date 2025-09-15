@@ -20,12 +20,34 @@ export const SocketProvider = ({ token, children }) => {
     const url = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || 'http://localhost:5000';
     const socket = io(url, {
       transports: ['websocket'],
-      auth: { token }
+      auth: { token },
+      reconnection: true,
+      reconnectionAttempts: 8,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 8000,
+      randomizationFactor: 0.5,
+      timeout: 8000
     });
     socketRef.current = socket;
 
     socket.on('connect', () => setConnected(true));
-    socket.on('disconnect', () => setConnected(false));
+    socket.on('disconnect', (reason) => {
+      setConnected(false);
+      if (reason === 'io server disconnect') {
+        // manual disconnect by server -> attempt reconnect
+        socket.connect();
+      }
+    });
+    socket.io.on('reconnect_attempt', (attempt) => {
+      // Could add UI indicator via custom event
+      window.dispatchEvent(new CustomEvent('socket:reconnectAttempt', { detail: { attempt } }));
+    });
+    socket.io.on('reconnect_error', (err) => {
+      window.dispatchEvent(new CustomEvent('socket:reconnectError', { detail: { message: err.message } }));
+    });
+    socket.io.on('reconnect_failed', () => {
+      window.dispatchEvent(new CustomEvent('socket:reconnectFailed'));
+    });
     socket.on('presence:init', () => {
       // self presence (ignore or could set own presence state)
     });
@@ -50,6 +72,10 @@ export const SocketProvider = ({ token, children }) => {
     socket.on('friend:habit:update', (payload) => {
       // Could be used to refresh specific friend progress lazily
       window.dispatchEvent(new CustomEvent('friendHabitUpdate', { detail: payload }));
+    });
+
+    socket.on('habit:updated', (payload) => {
+      window.dispatchEvent(new CustomEvent('habitUpdated', { detail: payload }));
     });
 
     return () => { socket.disconnect(); };

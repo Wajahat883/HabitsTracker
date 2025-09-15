@@ -44,7 +44,10 @@ connectDB()
       cors: {
         origin: (origin, cb) => cb(null, true), // rely on Express CORS earlier; keep permissive here for dev
         credentials: true
-      }
+      },
+      pingInterval: 20000,
+      pingTimeout: 25000,
+      maxHttpBufferSize: 1e6
     });
 
     io.use((socket, next) => {
@@ -107,8 +110,9 @@ connectDB()
     app.set('io', io);
     app.set('broadcastToUser', broadcastToUser);
 
-    server.listen(process.env.PORT || 4000, () => {
-      console.log(`🚀 Server + Socket.IO running at port : ${process.env.PORT || 4000}`);
+    const port = process.env.PORT || 5000;
+    server.listen(port, () => {
+      console.log(`🚀 Server + Socket.IO running at port : ${port}`);
     });
   })
   .catch((err) => {

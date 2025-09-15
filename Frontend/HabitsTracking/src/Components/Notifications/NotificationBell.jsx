@@ -12,13 +12,27 @@ export default function NotificationBell() {
   useEffect(() => {
     loadNotifications();
     loadUnreadCount();
-    
-    // Poll for new notifications every 30 seconds
+    // Poll fallback every 45s (less frequent due to sockets)
     const interval = setInterval(() => {
       loadUnreadCount();
-    }, 30000);
-    
-    return () => clearInterval(interval);
+    }, 45000);
+
+    // Listen for socket events dispatched globally
+    const onNew = (e) => {
+      const notif = e.detail;
+      setNotifications(prev => [notif, ...prev].slice(0,50));
+      if (!notif.read) setUnreadCount(c => c + 1);
+    };
+    const onUnread = (e) => {
+      const { count } = e.detail || {}; if (typeof count === 'number') setUnreadCount(count);
+    };
+    window.addEventListener('notification:new', onNew);
+    window.addEventListener('notifications:unreadCount', onUnread);
+  return () => {
+      clearInterval(interval);
+      window.removeEventListener('notification:new', onNew);
+      window.removeEventListener('notifications:unreadCount', onUnread);
+    };
   }, []);
 
   const loadNotifications = async () => {
@@ -37,8 +51,9 @@ export default function NotificationBell() {
     try {
       const data = await getUnreadCount();
       setUnreadCount(data.count);
-    } catch (error) {
-      console.error('Failed to load unread count:', error);
+  } catch {
+      // Silent degrade when backend temporarily unreachable
+      // console.warn('Unread count fetch failed (degraded mode).');
     }
   };
 
