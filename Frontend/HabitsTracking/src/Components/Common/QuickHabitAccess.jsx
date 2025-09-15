@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { FaFolder, FaCheckCircle, FaClock, FaChevronRight } from 'react-icons/fa';
+import { FaFolder, FaCheckCircle, FaClock, FaChevronRight, FaEdit, FaTrash, FaTimes } from 'react-icons/fa';
 
 export default function QuickHabitAccess() {
   const [folders, setFolders] = useState([]);
   const [recentHabits, setRecentHabits] = useState([]);
+  const [editingFolder, setEditingFolder] = useState(null);
+  const [tempFolderName, setTempFolderName] = useState('');
 
   useEffect(() => {
-    const loadFolders = () => {
+  const loadFolders = () => {
       const savedFolders = localStorage.getItem('habitTracker_folders');
       if (savedFolders) {
         const foldersData = JSON.parse(savedFolders);
@@ -41,7 +43,7 @@ export default function QuickHabitAccess() {
       loadFolders();
     };
 
-    window.addEventListener('foldersUpdated', handleFolderUpdate);
+  window.addEventListener('foldersUpdated', handleFolderUpdate);
 
     return () => {
       window.removeEventListener('foldersUpdated', handleFolderUpdate);
@@ -91,6 +93,32 @@ export default function QuickHabitAccess() {
     }, 0);
   };
 
+  const startEditingFolder = (folder) => {
+    setEditingFolder(folder);
+    setTempFolderName(folder.name);
+  };
+
+  const saveFolderEdit = () => {
+    if (!tempFolderName.trim()) return;
+    const updated = folders.map(f => f.id === editingFolder.id ? { ...f, name: tempFolderName.trim() } : f);
+    setFolders(updated);
+    localStorage.setItem('habitTracker_folders', JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent('foldersUpdated'));
+    setEditingFolder(null);
+  };
+
+  const cancelFolderEdit = () => {
+    setEditingFolder(null);
+  };
+
+  const deleteFolder = (folderId) => {
+    if (!window.confirm('Delete this folder and all its habits?')) return;
+    const updated = folders.filter(f => f.id !== folderId);
+    setFolders(updated);
+    localStorage.setItem('habitTracker_folders', JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent('foldersUpdated'));
+  };
+
   const formatTime = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString('en-US', { 
@@ -101,7 +129,7 @@ export default function QuickHabitAccess() {
   };
 
   return (
-    <div className="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700">
+    <div className="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700 relative">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <FaFolder className="text-yellow-400 text-xl" />
@@ -110,6 +138,39 @@ export default function QuickHabitAccess() {
         <div className="text-slate-400 text-sm">
           {folders.length} folders
         </div>
+      </div>
+
+      {/* Folder List with Hover Actions */}
+      <div className="space-y-2 mb-6">
+        {folders.length === 0 ? (
+          <div className="text-slate-500 text-xs italic">No folders yet</div>
+        ) : (
+          folders.map(folder => (
+            <div key={folder.id} className="group relative bg-slate-700/60 hover:bg-slate-700 rounded px-3 py-2 flex items-center gap-3 transition-colors">
+              <FaFolder className="text-yellow-400 text-sm" />
+              <div className="flex-1 min-w-0">
+                <div className="text-white text-sm font-medium truncate">{folder.name}</div>
+                <div className="text-[10px] text-slate-400 tracking-wide">{folder.habits.length} habits</div>
+              </div>
+              <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => startEditingFolder(folder)}
+                  className="p-1 rounded bg-slate-600/70 hover:bg-blue-600 text-slate-300 hover:text-white shadow-sm"
+                  title="Edit Folder"
+                >
+                  <FaEdit className="text-[10px]" />
+                </button>
+                <button
+                  onClick={() => deleteFolder(folder.id)}
+                  className="p-1 rounded bg-slate-600/70 hover:bg-red-600 text-slate-300 hover:text-white shadow-sm"
+                  title="Delete Folder"
+                >
+                  <FaTrash className="text-[10px]" />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Stats */}
@@ -189,6 +250,46 @@ export default function QuickHabitAccess() {
           <p className="mt-1">Create folders → Add habits → Track progress!</p>
         </div>
       </div>
+
+      {/* Edit Folder Modal */}
+      {editingFolder && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={(e)=> { if (e.target === e.currentTarget) cancelFolderEdit(); }}>
+          <div className="bg-slate-800 w-full max-w-sm rounded-lg border border-slate-700 p-5 shadow-xl relative animate-[fadeIn_.25s_ease]">
+            <button
+              className="absolute top-2 right-2 text-slate-400 hover:text-white"
+              onClick={cancelFolderEdit}
+              aria-label="Close edit folder modal"
+            >
+              <FaTimes className="text-sm" />
+            </button>
+            <h3 className="text-white font-semibold text-sm mb-3">Edit Folder</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] uppercase tracking-wide text-slate-400 mb-1">Folder Name</label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={tempFolderName}
+                  onChange={(e) => setTempFolderName(e.target.value)}
+                  onKeyDown={(e)=> e.key==='Enter' && saveFolderEdit()}
+                  className="w-full p-2 bg-slate-700 text-white rounded border border-slate-600 focus:border-blue-500 focus:outline-none text-sm"
+                  placeholder="Enter folder name"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={saveFolderEdit}
+                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium"
+                >Save</button>
+                <button
+                  onClick={cancelFolderEdit}
+                  className="flex-1 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded text-xs"
+                >Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

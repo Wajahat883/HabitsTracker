@@ -84,6 +84,17 @@ const Dashboard = () => {
       return raw ? JSON.parse(raw) : [];
     } catch { return []; }
   });
+  const [editingArea, setEditingArea] = useState(null);
+  const [areaNameDraft, setAreaNameDraft] = useState('');
+  const saveAreaEdit = () => {
+    if (!areaNameDraft.trim() || !editingArea) { setEditingArea(null); return; }
+    setAreas(prev => prev.map(a => a.id === editingArea.id ? { ...a, name: areaNameDraft.trim() } : a));
+    if (activeSection === `AREA_${editingArea.id}`) {
+      // trigger re-render; active section label uses area name from state
+    }
+    setEditingArea(null);
+  };
+  const cancelAreaEdit = () => setEditingArea(null);
   const [showAreaManager, setShowAreaManager] = useState(false);
   // activeArea no longer needed; derive from activeSection when needed
   const setActiveArea = () => {};
@@ -537,14 +548,29 @@ const Dashboard = () => {
           )}
           <div className="space-y-1 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
             {areas.map(a => (
-              <button
+              <div
                 key={a.id}
+                className={`group relative w-full flex items-center gap-2 px-3 py-2 rounded cursor-pointer select-none transition-colors ${activeSection===`AREA_${a.id}` ? 'bg-app-alt text-primary font-semibold' : 'text-muted hover:bg-app-alt'}`}
                 onClick={() => { setActiveArea(a); setActiveSection(`AREA_${a.id}`); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded text-left hover:bg-app-alt ${activeSection===`AREA_${a.id}` ? 'bg-app-alt text-primary font-semibold' : 'text-muted'}`}
               >
                 <FaFolder className="text-muted" />
-                <span className="truncate">{a.name}</span>
-              </button>
+                <span className="truncate flex-1 pr-8">{a.name}</span>
+                {/* Hover action buttons */}
+                <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setEditingArea(a); setAreaNameDraft(a.name); }}
+                    className="p-1 rounded bg-slate-600/60 hover:bg-blue-600 text-slate-300 hover:text-white text-[10px]"
+                    title="Edit Area"
+                  >✎</button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); if (window.confirm('Delete this area?')) { setAreas(prev => prev.filter(x => x.id !== a.id)); if(activeSection===`AREA_${a.id}`){ setActiveSection('Dashboard'); } } }}
+                    className="p-1 rounded bg-slate-600/60 hover:bg-red-600 text-slate-300 hover:text-white text-[10px]"
+                    title="Delete Area"
+                  >🗑</button>
+                </div>
+              </div>
             ))}
             {areas.length === 0 && (
               <div className="text-xs text-muted px-1 py-2">No areas yet. Click "New Area" to create one.</div>
@@ -605,6 +631,32 @@ const Dashboard = () => {
                 <button type="button" onClick={()=> setShowProfileEditModal(false)} className="flex-1 bg-app-alt hover:bg-surface border border-app text-primary font-medium py-2 rounded-lg text-sm">Cancel</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {editingArea && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={(e)=> { if(e.target===e.currentTarget) cancelAreaEdit(); }}>
+          <div className="bg-surface border border-app rounded-xl w-full max-w-sm p-5 relative">
+            <button className="absolute top-2 right-2 text-muted hover:text-primary" onClick={cancelAreaEdit}>✕</button>
+            <h4 className="text-primary font-semibold mb-4 text-sm">Edit Area</h4>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] uppercase tracking-wide text-muted mb-1">Area Name</label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={areaNameDraft}
+                  onChange={(e)=> setAreaNameDraft(e.target.value)}
+                  onKeyDown={(e)=> e.key==='Enter' && saveAreaEdit()}
+                  className="w-full bg-app-alt border border-app rounded-lg p-3 text-primary focus:outline-none focus:border-accent text-sm"
+                  placeholder="Enter area name"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={saveAreaEdit} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-xs">Save</button>
+                <button onClick={cancelAreaEdit} className="flex-1 bg-app-alt hover:bg-surface border border-app text-primary font-medium py-2 rounded-lg text-xs">Cancel</button>
+              </div>
+            </div>
           </div>
         </div>
       )}
