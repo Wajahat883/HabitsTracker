@@ -1,17 +1,14 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useTheme } from '../context/ThemeContext';
 import { useChartData } from "../context/useChartData";
 import { useHabitContext } from "../context/useHabitContext";
 import HabitForm from "../Components/Habits/HabitForm";
-import HabitList from "../Components/Habits/HabitList";
 import HabitTracker from "../Components/Habits/HabitTracker";
-import NotificationBell from "../Components/Notifications/NotificationBell";
 import UserSearch from "../Components/Friends/UserSearch";
 import AllUsersList from "../Components/Friends/AllUsersList";
 import SocialFeaturesTest from "../Components/Common/SocialFeaturesTest";
 // Area manager feature (re-added per new requirements)
 import AreaManagerModal from "../Components/Areas/AreaManagerModal";
-import { Bar, Doughnut } from "react-chartjs-2";
+import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -22,34 +19,18 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { FaHome, FaListAlt, FaSun, FaRegSun, FaMoon, FaPlus, FaInfinity, FaPause, FaCreditCard, FaCog, FaLink, FaUserFriends, FaCheckCircle, FaFolder, FaUsers, FaChevronDown, FaUser, FaPalette, FaSignOutAlt } from "react-icons/fa";
+import { FaUsers } from "react-icons/fa";
 import HabitTodo from "../Components/Habits/HabitTodo";
-import ProfileSettingsForm from '../Components/Profile/ProfileSettingsForm';
-import image from '../assets/logo-habit-tracker.png';
-import UserProfileBadge from '../Components/Common/UserProfileBadge';
 import ProgressSummary from "../Components/Progress/ProgressSummary";
 import CalendarHeatmap from "../Components/Progress/CalendarHeatmap";
 import GroupForm from "../Components/Groups/GroupForm";
 import ProfilePage from "../Components/Profile/ProfilePage";
 import FriendsList from "../Components/Friends/FriendsList";
 import InviteFriends from "../Components/Friends/InviteFriends";
-import Login from "../Components/Auth/Login";
-import Signup from "../Components/Auth/Signup";
 import { fetchFriendsProgress } from "../api/progress";
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
-const sidebarItems = [
-  { label: "Dashboard", icon: <FaHome /> },
-  { label: "Progress", icon: <FaRegSun /> },
-  // { label: "Habits", icon: <FaInfinity /> }, // removed per request
-  { label: "Habit Todo", icon: <FaListAlt /> },
-  // Removed Off Mode, Payment, and Resources per request; keep code reference for potential future re-enable
-  // { label: "Off Mode", icon: <FaPause /> },
-  // { label: "Payment", icon: <FaCreditCard /> },
-  // { label: "Resources", icon: <FaLink /> },
-  { label: "Friends", icon: <FaUserFriends /> },
-  { label: "Status", icon: <FaCheckCircle /> },
-];
+// Layout & navigation handled by AppShell
 
 // Example data for user, friend, and comparison
 // ...existing code...
@@ -98,40 +79,7 @@ const Dashboard = () => {
   const [showAreaManager, setShowAreaManager] = useState(false);
   // activeArea no longer needed; derive from activeSection when needed
   const setActiveArea = () => {};
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const { theme, toggleTheme } = useTheme();
-  const [isValidatingSession, setIsValidatingSession] = useState(true);
-  const [currentUser, setCurrentUser] = useState(() => {
-    // Try to load from localStorage immediately
-    try {
-      const savedUser = localStorage.getItem('currentUser');
-      if (savedUser) {
-        const userData = JSON.parse(savedUser);
-        console.log('Loading user on init:', userData);
-        return userData;
-      }
-    } catch (error) {
-      console.error('Error loading user from localStorage:', error);
-    }
-    return {
-      name: "",
-      profilePicture: null,
-      email: null
-    };
-  });
-  
-  // Auth & view state
-  const [activeView, setActiveView] = useState('login');
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    try {
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-      const user = localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser');
-      return !!token || !!user; // initial optimistic flag
-    } catch { return false; }
-  });
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showProfileEditModal, setShowProfileEditModal] = useState(false);
-  const [profileForm, setProfileForm] = useState({ username: '', profilePicture: null, preview: null });
+  // Layout/auth state removed – handled at higher level (AppShell / route guards)
   const { compareData, setFriendData, setCompareData } = useChartData();
   const {
     habits,
@@ -245,395 +193,10 @@ const Dashboard = () => {
     try { localStorage.setItem('habitTracker_areas_v2', JSON.stringify(areas)); } catch { /* ignore persist errors */ }
   }, [areas]);
 
-  // Load user profile data
-  useEffect(() => {
-    const loadUserProfile = async () => {
-      try {
-        // Check localStorage first for cached user data
-        const savedUser = localStorage.getItem('currentUser');
-        console.log('Saved user from localStorage:', savedUser);
-        if (savedUser) {
-          const userData = JSON.parse(savedUser);
-          console.log('Parsed user data:', userData);
-          setCurrentUser(userData);
-        }
-
-        // Try to fetch fresh data from server
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        const response = await fetch(`${API_URL}/api/auth/profile`, {
-          method: 'GET',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          const userData = await response.json();
-          console.log('User profile data received:', userData);
-          const userProfile = {
-            name: userData.username || userData.name || "",
-            profilePicture: userData.profilePicture || userData.picture || null,
-            email: userData.email || null
-          };
-          console.log('Setting user profile:', userProfile);
-          setCurrentUser(userProfile);
-          localStorage.setItem('currentUser', JSON.stringify(userProfile));
-        }
-      } catch (error) {
-        console.log('User profile fetch failed:', error);
-        // Keep empty data if fetch fails
-      }
-    };
-
-    loadUserProfile();
-
-    // Listen for profile updates
-    const handleProfileUpdate = (event) => {
-      setCurrentUser(event.detail);
-    };
-
-    window.addEventListener('userProfileUpdated', handleProfileUpdate);
-    return () => window.removeEventListener('userProfileUpdated', handleProfileUpdate);
-  }, []);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showProfileDropdown && !event.target.closest('.relative')) {
-        setShowProfileDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showProfileDropdown]);
-
-  // (Removed old manual theme class toggle; ThemeProvider handles it)
-
-  // Load user from localStorage on mount and listen for auth events
-  useEffect(() => {
-  const validateUserSession = async () => {
-      const savedUser = localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser');
-      const authToken = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-      
-      if (savedUser && authToken) {
-        try {
-          const userData = JSON.parse(savedUser);
-          console.log('Validating user session:', userData);
-          
-          // Try to validate token with backend
-          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/validate`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${authToken}`,
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          if (response.ok) {
-            console.log('[SESSION] /validate OK');
-            const raw = await response.json();
-            // Backend wraps payload: { statuscode, data: { user, accessToken? }, message }
-            const payload = raw?.data?.user ? raw.data : raw; // fall back if already unwrapped
-            const apiUser = payload.user;
-            let canonical = userData;
-            if (apiUser) {
-              console.log('[SESSION] validate user payload (unwrapped):', apiUser);
-              canonical = {
-                name: apiUser.name || apiUser.username || userData.name,
-                email: apiUser.email || userData.email,
-                profilePicture: apiUser.profilePicture || apiUser.picture || userData.profilePicture || null
-              };
-              localStorage.setItem('currentUser', JSON.stringify(canonical));
-              sessionStorage.setItem('currentUser', JSON.stringify(canonical));
-            }
-            setCurrentUser(canonical);
-            setActiveView('dashboard');
-            setIsAuthenticated(true);
-          } else {
-            console.log('Invalid session, clearing data');
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('authToken');
-            sessionStorage.removeItem('currentUser');
-            sessionStorage.removeItem('authToken');
-            setActiveView('login');
-            setIsAuthenticated(false);
-          }
-        } catch (error) {
-          console.error('Session validation failed (network or parse):', error);
-          // If validation fails, still use local data but with caution
-          const userData = JSON.parse(savedUser);
-          setCurrentUser(userData);
-          setActiveView('dashboard');
-          setIsAuthenticated(true);
-        }
-      } else if (savedUser) {
-        // No token but has user data - set user but might need re-auth later
-        try {
-          const userData = JSON.parse(savedUser);
-          console.log('Loading user without token:', userData);
-          setCurrentUser(userData);
-          setActiveView('dashboard');
-          setIsAuthenticated(true);
-        } catch (error) {
-          console.error('Error parsing saved user:', error);
-          setActiveView('login');
-          setIsAuthenticated(false);
-        }
-      } else {
-        console.log('No saved user data found');
-        setActiveView('login');
-        setIsAuthenticated(false);
-      }
-      
-      setIsValidatingSession(false);
-    };
-
-    validateUserSession();
-
-    // Listen for profile updates
-    const handleProfileUpdate = (event) => {
-      console.log('Profile update event received:', event.detail);
-      setCurrentUser(event.detail);
-    };
-
-    // Listen for login events
-    const handleLogin = (event) => {
-      console.log('Login event received:', event.detail);
-      if (event.detail) setCurrentUser(prev => ({ ...prev, ...event.detail }));
-      setActiveView('dashboard');
-      setIsAuthenticated(true);
-    };
-
-    // Listen for logout events
-    const handleLogout = () => {
-      console.log('Logout event received');
-      setCurrentUser({ name: "", profilePicture: null, email: null });
-      setActiveView('login');
-      setIsAuthenticated(false);
-    };
-
-    window.addEventListener('profileUpdated', handleProfileUpdate);
-    window.addEventListener('userLoggedIn', handleLogin);
-    window.addEventListener('userLoggedOut', handleLogout);
-
-    return () => {
-      window.removeEventListener('profileUpdated', handleProfileUpdate);
-      window.removeEventListener('userLoggedIn', handleLogin);
-      window.removeEventListener('userLoggedOut', handleLogout);
-    };
-  }, []);
+  // Auth/session effects removed – Dashboard assumes authenticated context via AppShell
 
   return (
-  <div className="min-h-screen bg-app overflow-auto scrollbar-custom text-primary">
-      {isValidatingSession ? (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-primary text-xl">Loading...</div>
-        </div>
-      ) : (
-        <>
-          {/* Fixed Navbar - Hidden on auth pages */}
-          {activeView === 'dashboard' && (
-          <nav className="fixed top-0 left-0 right-0 h-16 bg-surface flex items-center justify-between px-8 shadow-md z-40 border-b border-app">
-            <div className="flex items-center gap-3">
-              <img src={image} alt="Habit Tracker Logo" className="h-10 w-10" />
-              <span className="text-xl font-bold text-blue-400 tracking-tight">HabitTracker</span>
-            </div>
-            <div className="flex items-center gap-4">
-              {/* Removed New Area button from navbar per updated requirements */}
-              {/* Show NotificationBell only when logged in and in dashboard view */}
-              {activeView === 'dashboard' && isAuthenticated && (
-                <NotificationBell />
-              )}
-
-              {/* User Profile Section or Auth Buttons */}
-              {isAuthenticated ? (
-                <div className="relative">
-                  <button
-                    className="flex items-center gap-2 pr-3 pl-1 h-14 rounded-full hover:bg-app-alt transition group"
-                    onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                  >
-                    <UserProfileBadge user={currentUser} size='sm' showEmail={false} />
-                    <FaChevronDown className={`text-muted text-xs transition-transform group-hover:text-primary ${showProfileDropdown ? 'rotate-180' : ''}`} />
-                  </button>
-                  {showProfileDropdown && (
-                    <div className="absolute right-0 top-full mt-2 w-72 bg-surface rounded-xl shadow-2xl border border-app z-50 overflow-hidden">
-                      <div className="p-5 bg-surface border-b border-app">
-                        <div className="flex items-center gap-4">
-                          <UserProfileBadge user={currentUser} size='md' />
-                        </div>
-                      </div>
-                      <div className="py-2">
-                        <button
-                          onClick={toggleTheme}
-                          className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-app-alt transition-colors"
-                        >
-                          <FaPalette className="text-green-400" />
-                          <span className="text-primary text-sm font-medium">Theme: {theme === 'dark' ? 'Dark' : 'Light'}</span>
-                        </button>
-                        <button
-                          onClick={() => { 
-                            setProfileForm({ username: currentUser?.name || currentUser?.username || '', profilePicture: null, preview: currentUser?.profilePicture || null });
-                            setShowProfileEditModal(true); setShowProfileDropdown(false); }}
-                          className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-app-alt transition-colors"
-                        >
-                          <FaUser className="text-purple-400" />
-                          <span className="text-primary text-sm font-medium">Edit Profile</span>
-                        </button>
-                        <div className="border-t border-app mt-2 pt-2">
-                          <button
-                            onClick={() => { localStorage.removeItem('currentUser'); localStorage.removeItem('authToken'); localStorage.removeItem('habitTracker_folders'); sessionStorage.removeItem('currentUser'); sessionStorage.removeItem('authToken'); setCurrentUser({ name: '', profilePicture: null, email: null }); setActiveView('login'); setShowProfileDropdown(false); window.dispatchEvent(new CustomEvent('userLoggedOut')); setIsAuthenticated(false); }}
-                            className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-red-700 transition-colors text-red-400"
-                          >
-                            <FaSignOutAlt />
-                            <span className="text-sm font-medium">Sign Out</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setActiveView('login')}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
-                  >
-                    Login
-                  </button>
-                  <button
-                    onClick={() => setActiveView('signup')}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors"
-                  >
-                    Signup
-                  </button>
-                </div>
-              )}
-            </div>
-          </nav>
-          )}
-      
-  {/* Fixed Sidebar - Only show in dashboard view when authenticated */}
-  {activeView === 'dashboard' && isAuthenticated && (
-  <aside className="fixed top-16 left-0 bottom-0 w-72 bg-app text-primary flex flex-col py-6 px-4 shadow-xl border-r border-app overflow-y-auto app-scrollbar z-30">
-        {/* Navigation Menu */}
-        <nav className="mb-6">
-          <ul className="space-y-2">
-            {sidebarItems.map((item) => (
-              <li key={item.label}>
-                <button
-                  className={`w-full flex items-center gap-3 py-3 px-4 rounded-lg transition font-semibold ${activeSection === item.label ? "bg-accent text-primary" : "hover:bg-accent-soft/40"}`}
-                  onClick={() => setActiveSection(item.label)}
-                >
-                  <span className="text-lg">{item.icon}</span>
-                  <span>{item.label}</span>
-                </button>
-              </li>
-            ))}
-
-          </ul>
-        </nav>
-        
-        {/* Habit Folder Manager */}
-  <div className="flex-1 border-t border-app pt-4 space-y-3">
-          {isAuthenticated && (
-            <button
-              onClick={() => { setShowAreaManager(true); setActiveArea(null); }}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-surface hover:bg-app-alt text-primary text-sm font-medium border border-app"
-            >
-              <FaPlus className="text-xs" />
-              <span>New Area</span>
-            </button>
-          )}
-          <div className="space-y-1 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
-            {areas.map(a => (
-              <div
-                key={a.id}
-                className={`group relative w-full flex items-center gap-2 px-3 py-2 rounded cursor-pointer select-none transition-colors ${activeSection===`AREA_${a.id}` ? 'bg-app-alt text-primary font-semibold' : 'text-muted hover:bg-app-alt'}`}
-                onClick={() => { setActiveArea(a); setActiveSection(`AREA_${a.id}`); }}
-              >
-                <FaFolder className="text-muted" />
-                <span className="truncate flex-1 pr-8">{a.name}</span>
-                {/* Hover action buttons */}
-                <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setEditingArea(a); setAreaNameDraft(a.name); }}
-                    className="p-1 rounded bg-slate-600/60 hover:bg-blue-600 text-slate-300 hover:text-white text-[10px]"
-                    title="Edit Area"
-                  >✎</button>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); if (window.confirm('Delete this area?')) { setAreas(prev => prev.filter(x => x.id !== a.id)); if(activeSection===`AREA_${a.id}`){ setActiveSection('Dashboard'); } } }}
-                    className="p-1 rounded bg-slate-600/60 hover:bg-red-600 text-slate-300 hover:text-white text-[10px]"
-                    title="Delete Area"
-                  >🗑</button>
-                </div>
-              </div>
-            ))}
-            {areas.length === 0 && (
-              <div className="text-xs text-muted px-1 py-2">No areas yet. Click "New Area" to create one.</div>
-            )}
-          </div>
-        </div>
-        </aside>
-      )}
-      {showProfileEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-surface border border-app rounded-xl w-full max-w-md p-6 relative">
-            <button className="absolute top-3 right-3 text-muted hover:text-primary" onClick={()=> setShowProfileEditModal(false)}>✕</button>
-            <h3 className="text-lg font-semibold text-primary mb-4">Update Profile</h3>
-            <form onSubmit={async (e)=> {
-              e.preventDefault();
-              try {
-                const formData = new FormData();
-                if (profileForm.username) formData.append('username', profileForm.username);
-                if (profileForm.profilePicture) formData.append('profilePicture', profileForm.profilePicture);
-                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/user/profile`, {
-                  method: 'PUT',
-                  headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
-                  credentials: 'include',
-                  body: formData
-                });
-                const json = await res.json();
-                if (res.ok) {
-                  const updated = json.user || {};
-                  const merged = { ...currentUser, name: updated.username || updated.name || profileForm.username, profilePicture: updated.profilePicture };
-                  setCurrentUser(merged);
-                  localStorage.setItem('currentUser', JSON.stringify(merged));
-                  sessionStorage.setItem('currentUser', JSON.stringify(merged));
-                  window.dispatchEvent(new CustomEvent('profileUpdated', { detail: merged }));
-                  setShowProfileEditModal(false);
-                } else {
-                  console.warn('Profile update failed', json.message);
-                }
-              } catch(err) { console.error(err); }
-            }} className="space-y-5">
-              <div>
-                <label className="block text-xs uppercase tracking-wide text-muted mb-2">Username</label>
-                <input type="text" value={profileForm.username} onChange={(e)=> setProfileForm(p=> ({...p, username: e.target.value}))} className="w-full bg-app-alt border border-app rounded-lg p-3 text-primary focus:outline-none focus:border-accent" placeholder="Enter username" />
-              </div>
-              <div>
-                <label className="block text-xs uppercase tracking-wide text-muted mb-2">Profile Picture</label>
-                <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-full overflow-hidden bg-app-alt flex items-center justify-center text-xl font-semibold text-primary border border-app">
-                    {profileForm.preview ? <img src={profileForm.preview} alt="preview" className="h-full w-full object-cover" /> : (profileForm.username || currentUser?.name || 'U').charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1">
-                    <input type="file" accept="image/*" onChange={(e)=> { const file=e.target.files?.[0]; if(file){ setProfileForm(p=> ({...p, profilePicture: file, preview: URL.createObjectURL(file)})); } }} className="block w-full text-xs text-muted file:mr-3 file:py-2 file:px-3 file:rounded file:border-0 file:bg-accent file:text-primary file:text-xs hover:file:bg-accent-soft" />
-                    <p className="text-[10px] text-muted mt-1">JPG/PNG up to ~2MB. Center-cropped to square.</p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm">Save</button>
-                <button type="button" onClick={()=> setShowProfileEditModal(false)} className="flex-1 bg-app-alt hover:bg-surface border border-app text-primary font-medium py-2 rounded-lg text-sm">Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+    <div className="p-10 min-h-screen grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto text-primary">
       {editingArea && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={(e)=> { if(e.target===e.currentTarget) cancelAreaEdit(); }}>
           <div className="bg-surface border border-app rounded-xl w-full max-w-sm p-5 relative">
@@ -669,58 +232,7 @@ const Dashboard = () => {
           onClose={()=> setShowAreaManager(false)}
         />
       )}
-  {/* Area overlay removed; rendering inside main grid below */}
-      {showSettingsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-surface rounded-xl shadow-2xl w-full max-w-lg border border-app">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-app">
-              <h4 className="text-primary font-semibold">Settings</h4>
-              <button onClick={()=>setShowSettingsModal(false)} className="text-muted hover:text-primary">✕</button>
-            </div>
-            <ProfileSettingsForm onClose={()=>setShowSettingsModal(false)} onUpdated={(p)=> setCurrentUser(p)} />
-          </div>
-        </div>
-      )}
-      
-      {/* Conditional Content Area */}
-      {activeView === 'login' ? (
-  <main className="min-h-screen w-full flex items-center justify-center bg-app">
-          <div className="w-full max-w-lg mx-auto p-6">
-            <Login onSuccess={(userData) => {
-              setCurrentUser(userData);
-              setActiveView('dashboard');
-            }} />
-            <div className="text-center mt-6">
-              <button 
-                onClick={() => setActiveView('signup')}
-                className="text-blue-400 hover:text-blue-300 text-sm font-medium"
-              >
-                Don't have an account? Sign up
-              </button>
-            </div>
-          </div>
-        </main>
-      ) : activeView === 'signup' ? (
-  <main className="min-h-screen w-full flex items-center justify-center bg-app">
-          <div className="w-full max-w-lg mx-auto p-6">
-            <Signup onSuccess={(userData) => {
-              setCurrentUser(userData);
-              setActiveView('dashboard');
-            }} />
-            <div className="text-center mt-6">
-              <button 
-                onClick={() => setActiveView('login')}
-                className="text-blue-400 hover:text-blue-300 text-sm font-medium"
-              >
-                Already have an account? Login
-              </button>
-            </div>
-          </div>
-        </main>
-      ) : (
-        <>
-          {/* Scrollable Content Area */}
-          <main className="pt-20 ml-72 p-10 min-h-screen grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto">
+      {/* Dashboard Content */}
         {/* Dashboard Section */}
           {activeSection === "Dashboard" && (
             <>
@@ -990,13 +502,8 @@ const Dashboard = () => {
             </div>
           )}
 
-          {/* Dynamic Folder Sections */}
-          </main>
-        </>
-      )}
-      </>
-)}
-    </div>  
+          {/* Dynamic Folder Sections (handled within conditional sections above) */}
+    </div>
   );
 };
 export default Dashboard;

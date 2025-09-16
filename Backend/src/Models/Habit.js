@@ -44,6 +44,18 @@ const habitSchema = new mongoose.Schema({
     icon: {
         type: String
     },
+    // New optional enrichment fields
+    durationMinutes: {
+        type: Number,
+        min: 1
+    },
+    targetCount: {
+        type: Number,
+        min: 1
+    },
+    customConfig: {
+        type: mongoose.Schema.Types.Mixed
+    },
     isArchived: {
         type: Boolean,
         default: false,

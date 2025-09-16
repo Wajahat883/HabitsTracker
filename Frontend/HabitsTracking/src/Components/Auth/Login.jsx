@@ -95,7 +95,7 @@ const Login = ({ onSuccess }) => {
     setStreakPopup(true); // show popup after streak resolved (fast request)
     setTimeout(() => {
       setStreakPopup(false);
-      if (!onSuccess) navigate('/dashboard');
+            if (!onSuccess) navigate('/home');
     }, 1000);
   };
 

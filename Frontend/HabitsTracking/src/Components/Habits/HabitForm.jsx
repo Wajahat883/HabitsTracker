@@ -10,7 +10,10 @@ const defaultForm = {
   daysOfWeek: [],
   timesPerPeriod: 1,
   colorTag: '#3b82f6',
-  groupId: ''
+  groupId: '',
+  durationMinutes: '',
+  targetCount: '',
+  customConfig: ''
 };
 
 export default function HabitForm({ onCreated }) {
@@ -28,17 +31,33 @@ export default function HabitForm({ onCreated }) {
     setForm(f => ({ ...f, [name]: name === 'timesPerPeriod' ? Number(value) : value }));
   };
 
+  const handleNumber = (e) => {
+    const { name, value } = e.target;
+    setForm(f => ({ ...f, [name]: value ? Number(value) : '' }));
+  };
+
+  const parseCustomConfig = () => {
+    if (!form.customConfig) return undefined;
+    try { return JSON.parse(form.customConfig); } catch { return undefined; }
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true); setError('');
     try {
+      const payload = {
+        ...form,
+        durationMinutes: form.durationMinutes || undefined,
+        targetCount: form.targetCount || undefined,
+        customConfig: parseCustomConfig()
+      };
       if (editingHabit) {
-        const updated = await updateHabit(editingHabit._id, form);
+        const updated = await updateHabit(editingHabit._id, payload);
         setHabits(prev => prev.map(ph => ph._id === updated._id ? updated : ph));
         setEditingHabit(null);
         setSelectedHabit(updated);
       } else {
-        const created = form.groupId ? await createGroupHabit(form.groupId, form) : await createHabit(form);
+        const created = form.groupId ? await createGroupHabit(form.groupId, payload) : await createHabit(payload);
         setHabits(prev => [created, ...prev]);
         setSelectedHabit(created);
         if (onCreated) {
@@ -62,6 +81,16 @@ export default function HabitForm({ onCreated }) {
       <div>
         <label className="block text-sm text-slate-300 mb-1">Description</label>
         <textarea name="description" value={form.description} onChange={handleChange} rows={2} className="w-full bg-slate-700 text-white rounded p-2" />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm text-slate-300 mb-1">Duration (mins)</label>
+          <input type="number" name="durationMinutes" value={form.durationMinutes} onChange={handleNumber} min={1} className="w-full bg-slate-700 text-white rounded p-2" />
+        </div>
+        <div>
+          <label className="block text-sm text-slate-300 mb-1">Target Count</label>
+          <input type="number" name="targetCount" value={form.targetCount} onChange={handleNumber} min={1} className="w-full bg-slate-700 text-white rounded p-2" />
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -97,6 +126,11 @@ export default function HabitForm({ onCreated }) {
           <option value="">Individual Habit</option>
           {groups.map(g => <option key={g._id} value={g._id}>{g.name}</option>)}
         </select>
+      </div>
+      <div>
+        <label className="block text-sm text-slate-300 mb-1">Custom Config (JSON)</label>
+        <textarea name="customConfig" value={form.customConfig} onChange={handleChange} rows={2} placeholder='{"reminder":"evening"}' className="w-full bg-slate-700 text-white rounded p-2 text-xs" />
+        {form.customConfig && !parseCustomConfig() && <div className="text-xs text-red-400 mt-1">Invalid JSON</div>}
       </div>
       <div className="flex justify-end gap-2">
         {editingHabit && <button type="button" onClick={() => setEditingHabit(null)} className="px-3 py-2 text-sm bg-slate-600 rounded text-white">Cancel</button>}
