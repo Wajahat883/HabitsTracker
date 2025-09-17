@@ -53,6 +53,12 @@ app.use("/api/groups", groupRoutes);
 app.use("/api/friends", friendRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/folders", folderRoutes);
+// lightweight runtime config exposure (safe flags only)
+app.get('/api/config', (req,res)=> {
+    res.json({
+        graceMode: process.env.ALLOW_YESTERDAY_GRACE === 'true'
+    });
+});
 // Simple health & metrics endpoints
 app.get('/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 app.get('/metrics', (req, res) => {

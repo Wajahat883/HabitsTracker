@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { archiveHabit, deleteHabit, restoreHabit } from '../../api/habits';
+import { useCompletion } from '../../context/CompletionContext';
 import { useHabitContext } from '../../context/useHabitContext';
 
 export default function HabitList({ showArchived = false, onArchive, onDelete }) {
-  const { habits, setHabits, setEditingHabit, setSelectedHabit } = useHabitContext();
+  const { habits, setHabits, setEditingHabit, setSelectedHabit, deleteHabitLocal } = useHabitContext();
+  const { removeHabit } = useCompletion();
   const [filter, setFilter] = useState(showArchived ? 'archived' : 'active');
 
   const filtered = useMemo(() => habits.filter(h => filter === 'archived' ? h.isArchived : !h.isArchived), [habits, filter]);
@@ -30,8 +32,9 @@ export default function HabitList({ showArchived = false, onArchive, onDelete })
             <div className="flex gap-2 items-center">
               {!h.isArchived && <button onClick={() => { setEditingHabit(h); setSelectedHabit(h); }} className="text-xs px-2 py-1 bg-slate-600 hover:bg-slate-500 rounded text-white" aria-label={`Edit ${h.title}`}>Edit</button>}
               {!h.isArchived && <button onClick={async () => { await archiveHabit(h._id); setHabits(prev => prev.map(x => x._id===h._id ? { ...x, isArchived: true } : x)); if(onArchive) onArchive(h); }} className="text-xs px-2 py-1 bg-yellow-600 hover:bg-yellow-500 rounded text-white" aria-label={`Archive ${h.title}`}>Archive</button>}
+              {!h.isArchived && <button onClick={async () => { if(!window.confirm(`Delete habit "${h.title}" permanently?`)) return; await deleteHabit(h._id); deleteHabitLocal(h._id); removeHabit(h._id); if(onDelete) onDelete(h); }} className="text-xs px-2 py-1 bg-red-700 hover:bg-red-600 rounded text-white" aria-label={`Delete ${h.title}`}>Delete</button>}
               {h.isArchived && <button onClick={async () => { const restored = await restoreHabit(h._id); setHabits(prev => prev.map(x => x._id===h._id ? restored : x)); }} className="text-xs px-2 py-1 bg-green-700 hover:bg-green-600 rounded text-white" aria-label={`Restore ${h.title}`}>Restore</button>}
-              {h.isArchived && <button onClick={async () => { await deleteHabit(h._id); setHabits(prev => prev.filter(x => x._id !== h._id)); if(onDelete) onDelete(h); }} className="text-xs px-2 py-1 bg-red-700 hover:bg-red-600 rounded text-white" aria-label={`Delete ${h.title}`}>Delete</button>}
+              {h.isArchived && <button onClick={async () => { if(!window.confirm(`Delete habit "${h.title}" permanently?`)) return; await deleteHabit(h._id); deleteHabitLocal(h._id); removeHabit(h._id); if(onDelete) onDelete(h); }} className="text-xs px-2 py-1 bg-red-700 hover:bg-red-600 rounded text-white" aria-label={`Delete ${h.title}`}>Delete</button>}
             </div>
           </li>
         ))}

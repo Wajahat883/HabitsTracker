@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { FaBars, FaTimes } from 'react-icons/fa';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { FaChevronDown, FaPalette, FaSignOutAlt, FaHome, FaRegSun, FaListAlt, FaUserFriends, FaCheckCircle, FaFolder, FaPlus } from 'react-icons/fa';
 import { useTheme } from '../context/ThemeContext';
@@ -21,6 +22,7 @@ export default function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(()=> {
     try { return JSON.parse(localStorage.getItem('currentUser')) || {}; } catch { return {}; }
   });
@@ -39,38 +41,43 @@ export default function AppShell() {
     return item ? item.label : 'Home';
   })();
 
+  // Responsive sidebar toggle
+  const handleSidebarToggle = () => setSidebarOpen(v => !v);
+  const closeSidebar = () => setSidebarOpen(false);
+
   return (
-    <div className="min-h-screen bg-app text-primary">
-      {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 h-16 bg-surface flex items-center justify-between px-8 shadow-md z-40 border-b border-app">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={()=> navigate('/home')}>
-          <img src={image} alt="Habit Tracker Logo" className="h-10 w-10" />
-          <span className="text-xl font-bold text-blue-400 tracking-tight">HabitTracker</span>
+    <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
+      {/* Topbar */}
+      <nav className="fixed top-0 left-0 right-0 h-16 bg-[var(--color-bg-alt)] flex items-center justify-between px-4 md:px-8 shadow-md z-40 border-b border-[var(--color-border)]">
+        <div className="flex items-center gap-3 cursor-pointer select-none" onClick={()=> {navigate('/home'); closeSidebar();}}>
+          <img src={image} alt="Habit Tracker Logo" className="h-10 w-10 rounded-lg shadow" />
+          <span className="text-2xl font-extrabold text-blue-400 tracking-tight">HabitTracker</span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           {isAuthenticated && <NotificationBell />}
           {isAuthenticated ? (
             <div className="relative">
               <button
-                className="flex items-center gap-2 pr-3 pl-1 h-14 rounded-full hover:bg-app-alt transition group"
+                className="flex items-center gap-2 pr-3 pl-1 h-12 rounded-full hover:bg-[var(--color-bg)] transition group"
                 onClick={() => setShowProfileDropdown(s=>!s)}
+                aria-label="User menu"
               >
                 <UserProfileBadge user={currentUser} size='sm' showEmail={false} />
                 <FaChevronDown className={`text-muted text-xs transition-transform group-hover:text-primary ${showProfileDropdown ? 'rotate-180' : ''}`} />
               </button>
               {showProfileDropdown && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-surface rounded-xl shadow-2xl border border-app z-50 overflow-hidden">
-                  <div className="p-5 bg-surface border-b border-app">
+                <div className="absolute right-0 top-full mt-2 w-72 bg-[var(--color-bg-alt)] rounded-xl shadow-2xl border border-[var(--color-border)] z-50 overflow-hidden animate-fadein">
+                  <div className="p-5 border-b border-[var(--color-border)]">
                     <div className="flex items-center gap-4">
                       <UserProfileBadge user={currentUser} size='md' />
                     </div>
                   </div>
                   <div className="py-2">
-                    <button onClick={toggleTheme} className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-app-alt transition-colors">
+                    <button onClick={toggleTheme} className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-[var(--color-bg)] transition-colors">
                       <FaPalette className="text-green-400" />
                       <span className="text-primary text-sm font-medium">Theme: {theme === 'dark' ? 'Dark' : 'Light'}</span>
                     </button>
-                    <div className="border-t border-app mt-2 pt-2">
+                    <div className="border-t border-[var(--color-border)] mt-2 pt-2">
                       <button
                         onClick={() => { localStorage.clear(); sessionStorage.clear(); navigate('/login'); window.dispatchEvent(new CustomEvent('userLoggedOut')); }}
                         className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-red-700 transition-colors text-red-400"
@@ -85,38 +92,64 @@ export default function AppShell() {
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <button onClick={()=> navigate('/login')} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors">Login</button>
-              <button onClick={()=> navigate('/signup')} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors">Signup</button>
+              <button onClick={()=> navigate('/login')} className="btn">Login</button>
+              <button onClick={()=> navigate('/signup')} className="btn btn-success">Signup</button>
             </div>
+          )}
+          {/* Sidebar toggle for mobile */}
+          {isAuthenticated && (
+            <button className="md:hidden ml-2 p-2 rounded-lg hover:bg-[var(--color-bg)] transition" onClick={handleSidebarToggle} aria-label="Open sidebar">
+              <FaBars className="text-2xl text-blue-400" />
+            </button>
           )}
         </div>
       </nav>
 
-      {/* Sidebar (auth only) */}
+      {/* Sidebar (auth only, responsive/collapsible) */}
       {isAuthenticated && (
-        <aside className="fixed top-16 left-0 bottom-0 w-72 bg-app text-primary flex flex-col py-6 px-4 shadow-xl border-r border-app overflow-y-auto app-scrollbar z-30">
-          <nav className="mb-6">
-            <ul className="space-y-2">
-              {NAV_ITEMS.map(item => (
-                <li key={item.label}>
-                  <button
-                    className={`w-full flex items-center gap-3 py-3 px-4 rounded-lg transition font-semibold ${activeLabel === item.label ? 'bg-accent text-primary' : 'hover:bg-accent-soft/40'}`}
-                    onClick={()=> navigate(item.path)}
-                  >
-                    <span className="text-lg">{item.icon}</span>
-                    <span>{item.label}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </nav>
-          {/* Placeholder for areas/folders if needed later */}
-          <div className="mt-auto text-[10px] text-muted opacity-60 px-2">v1 layout</div>
-        </aside>
+        <>
+          {/* Overlay for mobile */}
+          <div className={`fixed inset-0 bg-black/40 z-40 transition-opacity duration-200 ${sidebarOpen ? 'block md:hidden opacity-100' : 'hidden opacity-0'}`} onClick={closeSidebar} />
+          <aside className={`fixed top-16 left-0 bottom-0 w-72 bg-[var(--color-bg-alt)] text-[var(--color-text)] flex flex-col py-6 px-4 shadow-xl border-r border-[var(--color-border)] overflow-y-auto app-scrollbar z-50 transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-80'} md:translate-x-0 md:z-30`}>
+            <button className="md:hidden absolute top-4 right-4 p-2 rounded-lg hover:bg-[var(--color-bg)] transition" onClick={closeSidebar} aria-label="Close sidebar">
+              <FaTimes className="text-2xl text-blue-400" />
+            </button>
+            <nav className="mb-6 mt-2">
+              <ul className="space-y-2">
+                {NAV_ITEMS.map(item => (
+                  <li key={item.label}>
+                    <button
+                      className={`w-full flex items-center gap-3 py-3 px-4 rounded-lg transition font-semibold text-lg ${activeLabel === item.label ? 'bg-[var(--color-accent)] text-[var(--color-bg)] shadow' : 'hover:bg-[var(--color-accent)]/30'}`}
+                      onClick={()=> {
+                        navigate(item.path.split('#')[0]);
+                        closeSidebar();
+                        if(item.path.includes('#')){
+                          const hash = item.path.split('#')[1];
+                          // map hash to section label inside Dashboard
+                          const map = { 'progress':'Progress', 'habit-todo':'Habit Todo', 'friends':'Friends', 'status':'Status' };
+                          const section = map[hash];
+                          if(section){
+                            setTimeout(()=> window.dispatchEvent(new CustomEvent('dashboardSectionChange', { detail: section })), 0);
+                          }
+                        } else if(item.label==='Dashboard') {
+                          setTimeout(()=> window.dispatchEvent(new CustomEvent('dashboardSectionChange', { detail: 'Dashboard' })),0);
+                        }
+                      }}
+                    >
+                      <span className="text-xl">{item.icon}</span>
+                      <span>{item.label}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            <div className="mt-auto text-xs text-muted opacity-60 px-2">Modern UI</div>
+          </aside>
+        </>
       )}
 
       {/* Main content area */}
-      <div className={`pt-20 ${isAuthenticated ? 'ml-72' : ''} p-6 min-h-screen`}>
+      <div className={`pt-20 transition-all duration-200 ${isAuthenticated ? 'md:ml-72' : ''} p-4 md:p-8 min-h-screen bg-[var(--color-bg)]`}> 
         <Outlet />
       </div>
     </div>

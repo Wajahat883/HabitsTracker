@@ -7,7 +7,10 @@ async function jsonGet(path) {
 }
 
 async function jsonPost(path, body) {
-  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const res = await fetch(`${API_BASE}${path}`, { method: 'POST',
+     credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify(body) });
   if (!res.ok) throw new Error('Request failed');
   return (await res.json()).data;
 }

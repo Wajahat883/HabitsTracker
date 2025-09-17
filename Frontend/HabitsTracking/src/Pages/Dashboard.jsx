@@ -23,11 +23,13 @@ import { FaUsers } from "react-icons/fa";
 import HabitTodo from "../Components/Habits/HabitTodo";
 import ProgressSummary from "../Components/Progress/ProgressSummary";
 import CalendarHeatmap from "../Components/Progress/CalendarHeatmap";
+import PerHabitSummary from "../Components/Progress/PerHabitSummary";
 import GroupForm from "../Components/Groups/GroupForm";
 import ProfilePage from "../Components/Profile/ProfilePage";
 import FriendsList from "../Components/Friends/FriendsList";
 import InviteFriends from "../Components/Friends/InviteFriends";
 import { fetchFriendsProgress } from "../api/progress";
+import { useCompletion } from "../context/CompletionContext";
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
 // Layout & navigation handled by AppShell
@@ -103,6 +105,7 @@ const Dashboard = () => {
     fetchFriendProgressData,
   // fetchGroupProgressData, // removed with chart section
   } = useHabitContext();
+  const { ensureLoaded, getStreak } = useCompletion();
 
   // Deduplicate friends by _id to avoid duplicate option keys
   const uniqueFriends = useMemo(() => {
@@ -117,10 +120,24 @@ const Dashboard = () => {
 
   // Update charts with real data including friends and groups
   useEffect(() => {
-    if (!progressSummary) return;
-    const habitStreaks = progressSummary.habitStreaks || [];
-    const userLabels = habitStreaks.map(h => h.title);
-    const userData = habitStreaks.map(h => h.streak);
+    if (!habits.length) return;
+    // Ensure cache loaded for all habits (streak computation needs data)
+    habits.forEach(h => ensureLoaded(h._id));
+  }, [habits, ensureLoaded]);
+
+  useEffect(() => {
+    if (!progressSummary && !habits.length) return;
+    const summaryStreaks = progressSummary?.habitStreaks || [];
+    const summaryIds = new Set(summaryStreaks.map(h => h.habitId || h._id));
+
+    // Fallback: for habits missing in summary, compute streak from completion cache
+    const fallback = habits
+      .filter(h => !summaryIds.has(h._id))
+      .map(h => ({ habitId: h._id, title: h.title, streak: getStreak(h._id) }));
+
+    const combined = [...summaryStreaks, ...fallback];
+    const userLabels = combined.map(h => h.title);
+    const userData = combined.map(h => h.streak);
 
     // Prepare datasets for comparison chart
     const datasets = [
@@ -177,7 +194,7 @@ const Dashboard = () => {
       labels: userLabels, // Use your habit names as base
       datasets: datasets
     });
-  }, [progressSummary, friendProgress, groupProgress, selectedFriend, setFriendData, setCompareData]);
+  }, [progressSummary, friendProgress, groupProgress, selectedFriend, setFriendData, setCompareData, habits, getStreak]);
 
   // Friends progress (aggregate) for All Friends bar chart
   const [friendsProgress, setFriendsProgress] = useState([]);
@@ -187,6 +204,13 @@ const Dashboard = () => {
     fetchFriendsProgress('30d').then(data => { if(!ignore) setFriendsProgress(data || []); }).catch(()=>{});
     return () => { ignore = true; };
   }, [friends.length]);
+
+  // Listen for section change events from AppShell (hash navigation)
+  useEffect(()=> {
+    const handler = (e) => { const next = e.detail; if(next) setActiveSection(next); };
+    window.addEventListener('dashboardSectionChange', handler);
+    return ()=> window.removeEventListener('dashboardSectionChange', handler);
+  }, []);
 
   // Persist areas
   useEffect(() => {
@@ -398,6 +422,9 @@ const Dashboard = () => {
           {/* Progress Section (Summary Only) */}
           {activeSection === "Progress" && (
             <>
+              <div className="col-span-1 md:col-span-2">
+                <PerHabitSummary />
+              </div>
               <div className="col-span-1 md:col-span-2">
                 <ProgressSummary />
               </div>

@@ -128,57 +128,61 @@ const Signup = ({ onSuccess }) => {
   const handleGoogleError = () => showToast('Google Signup Failed', 'error');
 
   return (
-    <div className="auth-bg">
-      <div className="auth-shell">
-        {toast.show && <ToastInline message={toast.message} type={toast.type} />}
-        <div className="auth-panel">
-          <div className="auth-card p-8 md:p-10 relative">
-            <h2 className="auth-heading text-center mb-6">Create Account</h2>
-            <form onSubmit={handleSignup} className="space-y-5">
-              <div>
-                <label className="auth-label">Username</label>
-                <input type="text" value={username} onChange={(e)=>setUsername(e.target.value)} required className="auth-input" placeholder="habit_ninja" />
-              </div>
-              <div>
-                <label className="auth-label">Email</label>
-                <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required className="auth-input" placeholder="you@example.com" />
-              </div>
-              <div>
-                <label className="auth-label">Password</label>
-                <div className="relative">
-                  <input type={showPassword? 'text':'password'} value={password} onChange={(e)=>setPassword(e.target.value)} required className="auth-input pr-12" placeholder="••••••••" />
-                  <button type="button" onClick={()=>setShowPassword(s=>!s)} className="absolute inset-y-0 right-2 px-2 flex items-center text-slate-500 hover:text-slate-300 text-xs font-medium tracking-wide">
-                    {showPassword ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <input type="checkbox" required className="w-4 h-4 rounded border-slate-400" />
-                <span className="auth-small">I agree to the <a href="#" className="auth-alt-link">Terms</a></span>
-              </div>
-              <button type="submit" disabled={loading} className="auth-submit">
-                {loading ? <Loader /> : 'Create Account'}
-              </button>
-            </form>
-            <div className="auth-divider"><span>OR</span></div>
-            <GoogleLoginButton onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
-            <p className="mt-8 text-center auth-small">Already have an account? <a href="/login" className="auth-alt-link">Sign in</a></p>
-          </div>
-        </div>
-        <div className="auth-side">
-          <div className="feature-badge"><span>Daily Momentum</span></div>
-          <div className="space-y-7 relative z-10">
-            <h2 className="auth-heading">Join the Habit Community</h2>
-            <p className="text-sm leading-relaxed text-slate-200 max-w-md">Create an account to set goals, track your year heat map, and celebrate sustainable progress—not just streak numbers.</p>
-            <div className="glass-tile">
-              <h4 className="text-sm font-semibold tracking-wide uppercase">Included</h4>
-              <ul className="text-xs space-y-2 text-slate-100/90">
-                <li>• Flexible habit scheduling</li>
-                <li>• Friend invitations & presence</li>
-                <li>• Motivational quotes engine</li>
-                <li>• Theming & accessibility</li>
-              </ul>
+    <div className="min-h-screen flex flex-col md:flex-row items-stretch bg-[var(--color-bg)]">
+      {toast.show && <ToastInline message={toast.message} type={toast.type} />}
+      {/* Left: Form */}
+      <div className="flex-1 flex items-center justify-center py-12 px-4 md:px-8 bg-[var(--color-bg)] animate-fadein">
+        <div className="card w-full max-w-md p-8 md:p-10 relative animate-fadein">
+          <h2 className="text-2xl font-extrabold text-center mb-6 text-blue-400">Create Account</h2>
+          <form onSubmit={handleSignup} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="signup-username">Username</label>
+              <input id="signup-username" type="text" value={username} onChange={(e)=>setUsername(e.target.value)} required className="input w-full" placeholder="habit_ninja" autoFocus />
             </div>
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="signup-email">Email</label>
+              <input id="signup-email" type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required className="input w-full" placeholder="you@example.com" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="signup-password">Password</label>
+              <div className="relative">
+                <input id="signup-password" type={showPassword? 'text':'password'} value={password} onChange={(e)=>setPassword(e.target.value)} required className="input w-full pr-12" placeholder="••••••••" />
+                <button type="button" onClick={()=>setShowPassword(s=>!s)} className="absolute inset-y-0 right-2 px-2 flex items-center text-muted hover:text-blue-400 text-xs font-medium tracking-wide" tabIndex={-1} aria-label="Toggle password visibility">
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <input type="checkbox" required className="rounded border-[var(--color-border)]" />
+              <span className="muted">I agree to the <a href="#" className="text-blue-400 hover:underline">Terms</a></span>
+            </div>
+            <button type="submit" disabled={loading} className="btn w-full flex items-center justify-center animate-pop">
+              {loading ? <Loader /> : 'Create Account'}
+            </button>
+          </form>
+          <div className="flex items-center my-6">
+            <div className="flex-1 h-px bg-[var(--color-border)]" />
+            <span className="mx-3 text-xs text-muted">OR</span>
+            <div className="flex-1 h-px bg-[var(--color-border)]" />
+          </div>
+          <GoogleLoginButton onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
+          <p className="mt-8 text-center text-sm text-muted">Already have an account? <a href="/login" className="text-blue-400 hover:underline">Sign in</a></p>
+        </div>
+      </div>
+      {/* Right: Feature/Branding */}
+      <div className="hidden md:flex flex-col justify-center items-center flex-1 bg-gradient-to-br from-blue-900/60 to-blue-700/40 relative overflow-hidden animate-fadein">
+        <div className="feature-badge mb-6"><span>Daily Momentum</span></div>
+        <div className="space-y-7 relative z-10 max-w-md px-8">
+          <h2 className="text-3xl font-extrabold text-white mb-2">Join the Habit Community</h2>
+          <p className="text-base leading-relaxed text-slate-200">Create an account to set goals, track your year heat map, and celebrate sustainable progress—not just streak numbers.</p>
+          <div className="glass-tile p-5 rounded-xl shadow-lg">
+            <h4 className="text-sm font-semibold tracking-wide uppercase text-blue-200 mb-2">Included</h4>
+            <ul className="text-xs space-y-2 text-slate-100/90">
+              <li>• Flexible habit scheduling</li>
+              <li>• Friend invitations & presence</li>
+              <li>• Motivational quotes engine</li>
+              <li>• Theming & accessibility</li>
+            </ul>
           </div>
         </div>
       </div>

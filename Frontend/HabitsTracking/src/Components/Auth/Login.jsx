@@ -151,60 +151,63 @@ const Login = ({ onSuccess }) => {
   const handleGoogleError = () => showToast('Google Login Failed', 'error');
 
   return (
-    <div className="auth-bg">
-      <div className="auth-shell">
+    <div className="min-h-screen flex flex-col md:flex-row items-stretch bg-[var(--color-bg)]">
       {toast.show && <Toast message={toast.message} type={toast.type} />}
       {streakPopup && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-40">
-          <div className="bg-white p-6 rounded shadow text-center">
-            <h3 className="text-xl font-semibold mb-2">Welcome Back!</h3>
-            <p className="mb-2">Current streak: <span className="font-bold">{userStreak} days</span></p>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50 animate-fadein">
+          <div className="card bg-white text-[var(--color-bg)] p-8 rounded-xl shadow-xl text-center max-w-xs w-full">
+            <h3 className="text-xl font-bold mb-2">Welcome Back!</h3>
+            <p className="mb-2">Current streak: <span className="font-bold text-blue-500">{userStreak} days</span></p>
             <p className="text-3xl">🔥</p>
           </div>
         </div>
       )}
-      <div className="auth-panel">
-        <div className="auth-card p-8 md:p-10 relative">
-          <h2 className="auth-heading text-center mb-6">Welcome Back</h2>
-          <form onSubmit={handleLogin} className="space-y-4">
+      {/* Left: Form */}
+      <div className="flex-1 flex items-center justify-center py-12 px-4 md:px-8 bg-[var(--color-bg)]">
+        <div className="card w-full max-w-md p-8 md:p-10 relative animate-fadein">
+          <h2 className="text-2xl font-extrabold text-center mb-6 text-blue-400">Welcome Back</h2>
+          <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="auth-label">Email</label>
-              <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required className="auth-input" placeholder="you@example.com" />
+              <label className="block text-sm font-medium mb-1" htmlFor="login-email">Email</label>
+              <input id="login-email" type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required className="input w-full" placeholder="you@example.com" autoFocus />
             </div>
             <div>
-              <label className="auth-label">Password</label>
+              <label className="block text-sm font-medium mb-1" htmlFor="login-password">Password</label>
               <div className="relative">
-                <input type={showPassword? 'text':'password'} value={password} onChange={(e)=>setPassword(e.target.value)} required className="auth-input pr-12" placeholder="••••••••" />
-                <button type="button" onClick={()=>setShowPassword(s=>!s)} className="absolute inset-y-0 right-2 px-2 flex items-center text-slate-500 hover:text-slate-300 text-xs font-medium tracking-wide">
+                <input id="login-password" type={showPassword? 'text':'password'} value={password} onChange={(e)=>setPassword(e.target.value)} required className="input w-full pr-12" placeholder="••••••••" />
+                <button type="button" onClick={()=>setShowPassword(s=>!s)} className="absolute inset-y-0 right-2 px-2 flex items-center text-muted hover:text-blue-400 text-xs font-medium tracking-wide" tabIndex={-1} aria-label="Toggle password visibility">
                   {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
             </div>
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center justify-between text-xs">
               <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" className="w-4 h-4 rounded border-slate-400" />
-                <span className="auth-small">Remember me</span>
+                <input type="checkbox" className="rounded border-[var(--color-border)]" />
+                <span className="muted">Remember me</span>
               </label>
-              <a href="#" className="auth-alt-link">Forgot Password?</a>
+              <a href="#" className="text-blue-400 hover:underline">Forgot Password?</a>
             </div>
-            <button type="submit" disabled={loading} className="auth-submit">
+            <button type="submit" disabled={loading} className="btn w-full flex items-center justify-center">
               {loading ? <Loader /> : 'Sign In'}
             </button>
           </form>
-          <div className="auth-divider">
-            <span>OR</span>
+          <div className="flex items-center my-6">
+            <div className="flex-1 h-px bg-[var(--color-border)]" />
+            <span className="mx-3 text-xs text-muted">OR</span>
+            <div className="flex-1 h-px bg-[var(--color-border)]" />
           </div>
           <GoogleLoginButton onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
-          <p className="mt-8 text-center auth-small">No account? <a href="/signup" className="auth-alt-link">Create one</a></p>
+          <p className="mt-8 text-center text-sm text-muted">No account? <a href="/signup" className="text-blue-400 hover:underline">Create one</a></p>
         </div>
       </div>
-      <div className="auth-side">
-        <div className="feature-badge"><span>Habit Insight Engine</span></div>
-        <div className="space-y-7 relative z-10">
-          <h2 className="auth-heading">Build Better Habits</h2>
-          <p className="text-sm leading-relaxed text-slate-200 max-w-md">Track, analyze and sustain your routines with real‑time streaks, motivational insights and a social layer that keeps you accountable.</p>
-          <div className="glass-tile">
-            <h4 className="text-sm font-semibold tracking-wide uppercase">Why Join?</h4>
+      {/* Right: Feature/Branding */}
+      <div className="hidden md:flex flex-col justify-center items-center flex-1 bg-gradient-to-br from-blue-900/60 to-blue-700/40 relative overflow-hidden">
+        <div className="feature-badge mb-6"><span>Habit Insight Engine</span></div>
+        <div className="space-y-7 relative z-10 max-w-md px-8">
+          <h2 className="text-3xl font-extrabold text-white mb-2">Build Better Habits</h2>
+          <p className="text-base leading-relaxed text-slate-200">Track, analyze and sustain your routines with real‑time streaks, motivational insights and a social layer that keeps you accountable.</p>
+          <div className="glass-tile p-5 rounded-xl shadow-lg">
+            <h4 className="text-sm font-semibold tracking-wide uppercase text-blue-200 mb-2">Why Join?</h4>
             <ul className="text-xs space-y-2 text-slate-100/90">
               <li>• Smart streak tracking with tolerance</li>
               <li>• Social progress & friend presence</li>
@@ -213,7 +216,6 @@ const Login = ({ onSuccess }) => {
             </ul>
           </div>
         </div>
-      </div>
       </div>
     </div>
   );

@@ -25,19 +25,33 @@ function computeFlexibleStreak(habit, logs, endDateStr) {
   // logs: ALL logs for habit sorted DESC by date
   const endDate = dateStrToDate(endDateStr);
   if (habit.frequencyType === 'daily') {
-    let streak = 0;
+    // New policy: streak counts consecutive completed days starting today going backwards
+    // It resets to zero if there are two consecutive days (today backwards) without a 'completed' log.
+    // 'skipped' does NOT count as completed and contributes to the miss chain.
+    const logMap = new Map(logs.map(l => [l.date, l.status]));
     let cursor = new Date(endDate);
-    // We'll examine days backwards until break
-    const logMap = new Map(logs.map(l => [l.date, l]));
+    let consecutiveMisses = 0;
+    let countedCompleted = 0;
     while (true) {
       const key = cursor.toISOString().slice(0,10);
-      const entry = logMap.get(key);
-      if (!entry) break; // missing -> break streak
-      if (entry.status === 'completed') streak++; else if (entry.status === 'skipped') { /* ignore skipped day but continue */ } else break;
+      const status = logMap.get(key);
+      if (status === 'completed') {
+        countedCompleted++;
+        consecutiveMisses = 0; // reset miss chain
+      } else {
+        consecutiveMisses++;
+        if (consecutiveMisses >= 2) {
+          // Two misses in a row breaks and resets streak entirely
+          countedCompleted = 0;
+          break;
+        }
+      }
       // Move back a day
       cursor.setUTCDate(cursor.getUTCDate() - 1);
+      // Safety: stop after 365 iterations
+      if (countedCompleted + consecutiveMisses > 365) break;
     }
-    return streak;
+    return countedCompleted;
   }
   if (habit.frequencyType === 'weekly') {
     if (!habit.daysOfWeek || habit.daysOfWeek.length === 0) return 0;
@@ -89,13 +103,37 @@ function computeFlexibleStreak(habit, logs, endDateStr) {
 
 export const createHabit = async (req, res, next) => {
   try {
-    const { title, description, frequencyType, daysOfWeek, timesPerPeriod, colorTag, icon } = req.body;
+    const { title, description, frequencyType, daysOfWeek, timesPerPeriod, colorTag, icon, durationMinutes, targetCount, customConfig } = req.body;
     if (frequencyType === 'weekly' && (!daysOfWeek || daysOfWeek.length === 0)) {
       throw new ApiError(400, 'daysOfWeek required for weekly habits');
     }
-    const habit = await Habit.create({ user: req.user.userId, title, description, frequencyType, daysOfWeek, timesPerPeriod, colorTag, icon });
-  const io = req.app.get('io');
-  if (io) io.to(`user:${req.user.userId}`).emit('habit:updated', { type: 'habitCreated', habit });
+    // Enforce single active daily habit per (user,title) by returning existing instead of creating duplicate
+    if (frequencyType === 'daily') {
+      const existing = await Habit.findOne({
+        user: req.user.userId,
+        title: { $regex: new RegExp(`^${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+        isArchived: false,
+        frequencyType: 'daily'
+      });
+      if (existing) {
+        return res.status(200).json(new ApiResponse(200, existing, 'Daily habit with this title already exists; reusing existing habit'));
+      }
+    }
+    const habit = await Habit.create({
+      user: req.user.userId,
+      title,
+      description,
+      frequencyType,
+      daysOfWeek,
+      timesPerPeriod,
+      colorTag,
+      icon,
+      durationMinutes,
+      targetCount,
+      customConfig
+    });
+    const io = req.app.get('io');
+    if (io) io.to(`user:${req.user.userId}`).emit('habit:updated', { type: 'habitCreated', habit });
     return res.status(201).json(new ApiResponse(201, habit, 'Habit created'));
   } catch (e) { next(e); }
 };
@@ -125,7 +163,18 @@ export const getHabit = async (req, res, next) => {
 
 export const updateHabit = async (req, res, next) => {
   try {
-    const allowed = ['title','description','frequencyType','daysOfWeek','timesPerPeriod','colorTag','icon'];
+    const allowed = [
+      'title',
+      'description',
+      'frequencyType',
+      'daysOfWeek',
+      'timesPerPeriod',
+      'colorTag',
+      'icon',
+      'durationMinutes',
+      'targetCount',
+      'customConfig'
+    ];
     const updates = {};
     for (const k of allowed) if (k in req.body) updates[k] = req.body[k];
     if (updates.frequencyType === 'weekly' && (!updates.daysOfWeek || updates.daysOfWeek.length === 0)) {
@@ -133,8 +182,8 @@ export const updateHabit = async (req, res, next) => {
     }
     const habit = await Habit.findOneAndUpdate({ _id: req.params.id, user: req.user.userId }, updates, { new: true });
     if (!habit) throw new ApiError(404, 'Habit not found');
-  const io = req.app.get('io');
-  if (io) io.to(`user:${req.user.userId}`).emit('habit:updated', { type: 'habitUpdated', habit });
+    const io = req.app.get('io');
+    if (io) io.to(`user:${req.user.userId}`).emit('habit:updated', { type: 'habitUpdated', habit });
     return res.json(new ApiResponse(200, habit, 'Habit updated'));
   } catch (e) { next(e); }
 };
@@ -161,11 +210,18 @@ export const restoreHabit = async (req, res, next) => {
 
 export const deleteHabit = async (req, res, next) => {
   try {
-    const habit = await Habit.findOneAndUpdate({ _id: req.params.id, user: req.user.userId }, { isArchived: true }, { new: true });
+    const habit = await Habit.findOne({ _id: req.params.id, user: req.user.userId });
     if (!habit) throw new ApiError(404, 'Habit not found');
-  const io = req.app.get('io');
-  if (io) io.to(`user:${req.user.userId}`).emit('habit:updated', { type: 'habitDeleted', habitId: habit._id });
-    return res.json(new ApiResponse(200, { success: true }, 'Soft deleted (archived)'));
+    // Remove logs first to avoid orphan data
+    await HabitLog.deleteMany({ habit: habit._id, user: req.user.userId });
+    // If part of a group, detach
+    if (habit.group) {
+      try { await Group.updateOne({ _id: habit.group }, { $pull: { habits: habit._id } }); } catch { /* ignore */ }
+    }
+    await habit.deleteOne();
+    const io = req.app.get('io');
+    if (io) io.to(`user:${req.user.userId}`).emit('habit:updated', { type: 'habitDeleted', habitId: habit._id });
+    return res.json(new ApiResponse(200, { success: true }, 'Habit permanently deleted'));
   } catch (e) { next(e); }
 };
 
@@ -175,13 +231,20 @@ export const createOrUpdateLog = async (req, res, next) => {
     if (!date || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date)) throw new ApiError(400, 'Valid date (YYYY-MM-DD) required');
     const habit = await Habit.findOne({ _id: req.params.id, user: req.user.userId, isArchived: false });
     if (!habit) throw new ApiError(404, 'Habit not found');
-    // Reject future dates
-    const todayUTC = new Date();
-    const todayStr = todayUTC.toISOString().slice(0,10);
-    if (date > todayStr) throw new ApiError(400, 'Future dates not allowed');
-    // Ensure not older than 90 days (optional window)
-    const ninetyAgo = new Date(Date.now() - 90*86400000).toISOString().slice(0,10);
-    if (date < ninetyAgo) throw new ApiError(400, 'Date older than 90-day window');
+    // Restrict logging strictly to today (UTC-based) – no backfilling or future logging
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    const yesterday = new Date(now); yesterday.setDate(now.getDate()-1);
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`;
+    const allowGrace = process.env.ALLOW_YESTERDAY_GRACE === 'true';
+    if (date !== todayStr) {
+      if (!(allowGrace && date === yesterdayStr)) {
+        throw new ApiError(400, 'You can only log today\'s date' + (allowGrace ? ' or yesterday (grace mode)' : ''));
+      }
+      // if grace mode yesterday, ensure no existing log for that habit/date (prevent altering past intentionally)
+      const existing = await HabitLog.findOne({ habit: habit._id, user: req.user.userId, date });
+      if (existing) throw new ApiError(400, 'Yesterday already logged');
+    }
     // Weekly habit validation
     if (habit.frequencyType === 'weekly') {
       if (!habit.daysOfWeek || habit.daysOfWeek.length === 0) throw new ApiError(400, 'Weekly habit misconfigured (daysOfWeek missing)');

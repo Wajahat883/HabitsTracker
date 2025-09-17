@@ -1,59 +1,48 @@
-import React, { useEffect, useState } from 'react';
-import { fetchLogs, saveLog } from '../../api/habits';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useHabitContext } from '../../context/useHabitContext';
+import { useCompletion } from '../../context/CompletionContext';
 
-const STATUSES = ['incomplete','completed','skipped'];
-
-function nextStatus(current) {
-  if (!current || current === 'incomplete') return 'completed';
-  if (current === 'completed') return 'skipped';
-  return 'incomplete';
-}
+// Status sequencing handled by CompletionContext.toggleStatus
 
 export default function HabitTracker() {
   const { selectedHabit } = useHabitContext();
-  const [logs, setLogs] = useState({});
+  const { ensureLoaded, getStatus, toggleStatus } = useCompletion();
   const [loading, setLoading] = useState(false);
   const [range] = useState(() => {
     const today = new Date();
     const from = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 13);
     const to = today;
-    const fmt = d => d.toISOString().slice(0,10);
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     return { from: fmt(from), to: fmt(to) };
   });
 
   useEffect(() => {
+    let ignore = false;
     if (!selectedHabit) return;
     (async () => {
       setLoading(true);
-      try {
-        const data = await fetchLogs(selectedHabit._id, range);
-        const map = {}; data.forEach(l => { map[l.date] = l; });
-        setLogs(map);
-  } catch { /* handle silently */ }
-      finally { setLoading(false); }
+      try { await ensureLoaded(selectedHabit._id); } catch { /* silent */ }
+      finally { if(!ignore) setLoading(false); }
     })();
-  }, [selectedHabit, range]);
+    return () => { ignore = true; };
+  }, [selectedHabit, ensureLoaded]);
+  const toggle = useCallback(async (dateStr) => {
+    if (!selectedHabit) return;
+    await toggleStatus(selectedHabit._id, dateStr);
+  }, [selectedHabit, toggleStatus]);
 
   if (!selectedHabit) return <div className="text-slate-400 text-sm">Select a habit to track.</div>;
 
   const days = [];
-  const start = new Date(range.from + 'T00:00:00Z');
-  const end = new Date(range.to + 'T00:00:00Z');
+  const [sy,sm,sd] = range.from.split('-').map(Number);
+  const [ey,em,ed] = range.to.split('-').map(Number);
+  const start = new Date(sy, sm-1, sd);
+  const end = new Date(ey, em-1, ed);
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     days.push(new Date(d));
   }
 
-  const toggle = async (dateStr) => {
-    const current = logs[dateStr]?.status || 'incomplete';
-    const status = nextStatus(current);
-    // optimistic
-    setLogs(prev => ({ ...prev, [dateStr]: { ...(prev[dateStr]||{}), date: dateStr, status } }));
-    try { await saveLog(selectedHabit._id, { date: dateStr, status }); }
-    catch { /* revert */ }
-  };
-
-  const fmt = d => d.toISOString().slice(0,10);
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
   return (
     <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
@@ -62,14 +51,17 @@ export default function HabitTracker() {
   <div className="grid grid-cols-7 gap-2" role="grid" aria-label="Habit tracker last 14 days">
         {days.map(d => {
           const ds = fmt(d);
-          const status = logs[ds]?.status || 'incomplete';
-          let color = 'bg-slate-700';
-            if (status === 'completed') color = 'bg-green-600';
-            else if (status === 'skipped') color = 'bg-yellow-600';
+          const status = selectedHabit ? getStatus(selectedHabit._id, ds) : 'incomplete';
+          const now = new Date();
+          const isToday = ds === `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+          let color = isToday ? 'bg-slate-700' : 'bg-slate-800';
+            if (status === 'completed') color = isToday ? 'bg-green-600' : 'bg-green-900';
+            else if (status === 'skipped') color = isToday ? 'bg-yellow-600' : 'bg-yellow-900';
           return (
-    <button key={ds} onClick={() => toggle(ds)} title={ds}
-      aria-label={`Day ${ds} status ${status}`}
-      className={`h-10 w-10 rounded text-xs text-white flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400 ${color}`}>{d.getDate()}</button>
+    <button key={ds} onClick={() => isToday && toggle(ds)} title={ds}
+      disabled={!isToday}
+      aria-label={`${isToday ? 'Toggle' : 'Read-only'} day ${ds} status ${status}`}
+      className={`habit-cell-btn h-10 w-10 rounded text-xs text-white flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-60 disabled:cursor-not-allowed ${color}`}>{d.getDate()}</button>
           );
         })}
       </div>

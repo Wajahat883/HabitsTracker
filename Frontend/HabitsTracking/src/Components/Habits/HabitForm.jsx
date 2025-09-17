@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { FaChevronDown, FaChevronUp, FaCheckCircle } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 import { createHabit, updateHabit } from '../../api/habits';
 import { createGroupHabit } from '../../api/groups';
 import { useHabitContext } from '../../context/useHabitContext';
@@ -21,6 +23,8 @@ export default function HabitForm({ onCreated }) {
   const [form, setForm] = useState(editingHabit ? { ...defaultForm, ...editingHabit } : defaultForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const toggleDay = (d) => {
     setForm(f => ({ ...f, daysOfWeek: f.daysOfWeek.includes(d) ? f.daysOfWeek.filter(x => x !== d) : [...f.daysOfWeek, d] }));
@@ -43,7 +47,7 @@ export default function HabitForm({ onCreated }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setSuccess(false);
     try {
       const payload = {
         ...form,
@@ -51,90 +55,119 @@ export default function HabitForm({ onCreated }) {
         targetCount: form.targetCount || undefined,
         customConfig: parseCustomConfig()
       };
+      let createdOrUpdated;
       if (editingHabit) {
-        const updated = await updateHabit(editingHabit._id, payload);
-        setHabits(prev => prev.map(ph => ph._id === updated._id ? updated : ph));
+        createdOrUpdated = await updateHabit(editingHabit._id, payload);
+        setHabits(prev => prev.map(ph => ph._id === createdOrUpdated._id ? createdOrUpdated : ph));
         setEditingHabit(null);
-        setSelectedHabit(updated);
+        setSelectedHabit(createdOrUpdated);
       } else {
-        const created = form.groupId ? await createGroupHabit(form.groupId, payload) : await createHabit(payload);
-        setHabits(prev => [created, ...prev]);
-        setSelectedHabit(created);
+        createdOrUpdated = form.groupId ? await createGroupHabit(form.groupId, payload) : await createHabit(payload);
+        setHabits(prev => prev.some(h => h._id === createdOrUpdated._id) ? prev : [createdOrUpdated, ...prev]);
+        setSelectedHabit(createdOrUpdated);
         if (onCreated) {
-          try { onCreated(created); } catch { /* no-op */ }
+          try { onCreated(createdOrUpdated); } catch { /* no-op */ }
         }
         setForm(defaultForm);
       }
+      setSuccess(true);
+      toast.success(editingHabit ? 'Habit updated!' : 'Habit created!', { position: 'top-center', autoClose: 1800 });
     } catch (err) {
       setError(err.message);
     } finally { setLoading(false); }
   };
 
   return (
-    <form onSubmit={submit} className="space-y-4 bg-slate-800 p-4 rounded-lg border border-slate-700">
-      <h3 className="text-lg font-semibold text-blue-300">{editingHabit ? 'Edit Habit' : 'New Habit'}</h3>
-      {error && <div className="text-red-400 text-sm">{error}</div>}
-      <div>
-        <label className="block text-sm text-slate-300 mb-1">Title</label>
-        <input name="title" value={form.title} onChange={handleChange} required minLength={3} className="w-full bg-slate-700 text-white rounded p-2" />
+    <form onSubmit={submit} className="card max-w-lg mx-auto space-y-7 animate-fadein">
+      <h3 className="text-2xl font-bold text-blue-400 mb-2 flex items-center gap-2">
+        {editingHabit ? 'Edit Habit' : 'Create New Habit'}
+        {success && <FaCheckCircle className="text-green-400 animate-pop" />}
+      </h3>
+      {error && <div className="text-red-400 text-sm mb-2 animate-shake">{error}</div>}
+      <div className="space-y-2">
+        <label className="block text-base font-medium" htmlFor="habit-title">Title <span className="text-red-400">*</span></label>
+        <input id="habit-title" name="title" value={form.title} onChange={handleChange} required minLength={3} maxLength={60}
+          className="input w-full text-lg" placeholder="e.g. Drink Water" autoFocus />
       </div>
-      <div>
-        <label className="block text-sm text-slate-300 mb-1">Description</label>
-        <textarea name="description" value={form.description} onChange={handleChange} rows={2} className="w-full bg-slate-700 text-white rounded p-2" />
+      <div className="space-y-2">
+        <label className="block text-base font-medium" htmlFor="habit-desc">Description</label>
+        <textarea id="habit-desc" name="description" value={form.description} onChange={handleChange} rows={2}
+          className="textarea w-full text-base" placeholder="Optional details..." />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm text-slate-300 mb-1">Duration (mins)</label>
-          <input type="number" name="durationMinutes" value={form.durationMinutes} onChange={handleNumber} min={1} className="w-full bg-slate-700 text-white rounded p-2" />
-        </div>
-        <div>
-          <label className="block text-sm text-slate-300 mb-1">Target Count</label>
-          <input type="number" name="targetCount" value={form.targetCount} onChange={handleNumber} min={1} className="w-full bg-slate-700 text-white rounded p-2" />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm text-slate-300 mb-1">Frequency</label>
-          <select name="frequencyType" value={form.frequencyType} onChange={handleChange} className="w-full bg-slate-700 text-white rounded p-2">
+          <label className="block text-base font-medium">Frequency</label>
+          <select name="frequencyType" value={form.frequencyType} onChange={handleChange}
+            className="select w-full text-base">
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
           </select>
         </div>
         <div>
-          <label className="block text-sm text-slate-300 mb-1">Times / Period (optional)</label>
-          <input type="number" name="timesPerPeriod" value={form.timesPerPeriod} onChange={handleChange} min={1} className="w-full bg-slate-700 text-white rounded p-2" />
+          <label className="block text-base font-medium">Times / Period <span className="text-slate-400 text-xs">(optional)</span></label>
+          <input type="number" name="timesPerPeriod" value={form.timesPerPeriod} onChange={handleChange} min={1}
+            className="input w-full text-base" />
         </div>
       </div>
       {form.frequencyType === 'weekly' && (
-        <div>
-          <label className="block text-sm text-slate-300 mb-1">Days of Week</label>
+        <div className="space-y-2">
+          <label className="block text-base font-medium">Days of Week</label>
           <div className="flex gap-1 flex-wrap">
             {['S','M','T','W','T','F','S'].map((d,i) => (
-              <button type="button" key={i} onClick={() => toggleDay(i)} className={`w-8 h-8 rounded-full text-sm font-medium ${form.daysOfWeek.includes(i) ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300'}`}>{d}</button>
+              <button type="button" key={i} onClick={() => toggleDay(i)}
+                className={`w-9 h-9 rounded-full text-base font-semibold transition-all duration-200 border-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 ${form.daysOfWeek.includes(i) ? 'bg-blue-500 text-white border-blue-400 shadow animate-pop' : 'bg-slate-700 text-slate-300 border-slate-600 hover:bg-blue-600 hover:text-white'}`}>{d}</button>
             ))}
           </div>
         </div>
       )}
-      <div>
-        <label className="block text-sm text-slate-300 mb-1">Color</label>
-        <input type="color" name="colorTag" value={form.colorTag} onChange={handleChange} className="h-10 w-16 p-1 bg-slate-700 rounded" />
+      <div className="flex items-center gap-4">
+        <div className="flex-1">
+          <label className="block text-base font-medium">Color</label>
+          <input type="color" name="colorTag" value={form.colorTag} onChange={handleChange}
+            className="h-10 w-16 p-1 bg-transparent rounded border-2 border-[var(--color-border)]" />
+        </div>
+        <div className="flex-1">
+          <label className="block text-base font-medium">Group <span className="text-slate-400 text-xs">(optional)</span></label>
+          <select name="groupId" value={form.groupId} onChange={handleChange}
+            className="select w-full text-base">
+            <option value="">Individual Habit</option>
+            {groups.map(g => <option key={g._id} value={g._id}>{g.name}</option>)}
+          </select>
+        </div>
       </div>
-      <div>
-        <label className="block text-sm text-slate-300 mb-1">Group (optional)</label>
-        <select name="groupId" value={form.groupId} onChange={handleChange} className="w-full bg-slate-700 text-white rounded p-2">
-          <option value="">Individual Habit</option>
-          {groups.map(g => <option key={g._id} value={g._id}>{g.name}</option>)}
-        </select>
+      {/* Advanced Options Stepper */}
+      <div className="mt-2">
+        <button type="button" onClick={()=>setShowAdvanced(v=>!v)}
+          className="flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm font-medium focus:outline-none transition-all animate-fadein">
+          {showAdvanced ? <FaChevronUp /> : <FaChevronDown />} Advanced Options
+        </button>
+        {showAdvanced && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 animate-fadein">
+            <div>
+              <label className="block text-sm font-medium mb-1">Duration (mins)</label>
+              <input type="number" name="durationMinutes" value={form.durationMinutes} onChange={handleNumber} min={1}
+                className="input w-full" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Target Count</label>
+              <input type="number" name="targetCount" value={form.targetCount} onChange={handleNumber} min={1}
+                className="input w-full" />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium mb-1">Custom Config (JSON)</label>
+              <textarea name="customConfig" value={form.customConfig} onChange={handleChange} rows={2} placeholder='{"reminder":"evening"}'
+                className="textarea w-full text-xs" />
+              {form.customConfig && !parseCustomConfig() && <div className="text-xs text-red-400 mt-1">Invalid JSON</div>}
+            </div>
+          </div>
+        )}
       </div>
-      <div>
-        <label className="block text-sm text-slate-300 mb-1">Custom Config (JSON)</label>
-        <textarea name="customConfig" value={form.customConfig} onChange={handleChange} rows={2} placeholder='{"reminder":"evening"}' className="w-full bg-slate-700 text-white rounded p-2 text-xs" />
-        {form.customConfig && !parseCustomConfig() && <div className="text-xs text-red-400 mt-1">Invalid JSON</div>}
-      </div>
-      <div className="flex justify-end gap-2">
-        {editingHabit && <button type="button" onClick={() => setEditingHabit(null)} className="px-3 py-2 text-sm bg-slate-600 rounded text-white">Cancel</button>}
-        <button disabled={loading} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded">{loading ? 'Saving...' : editingHabit ? 'Update' : 'Create'}</button>
+      <div className="flex justify-end gap-2 mt-4">
+        {editingHabit && <button type="button" onClick={() => setEditingHabit(null)} className="btn bg-slate-600 hover:bg-slate-500 text-white">Cancel</button>}
+        <button disabled={loading} className="btn btn-success flex items-center gap-2 animate-pop">
+          {loading ? 'Saving...' : editingHabit ? 'Update' : 'Create'}
+        </button>
       </div>
     </form>
   );

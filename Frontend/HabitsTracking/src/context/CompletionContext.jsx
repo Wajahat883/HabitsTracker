@@ -15,8 +15,20 @@ CompletionContext: provides unified access to habit completion statuses.
 const CompletionContext = createContext(null);
 const LOCAL_KEY = 'habitCompletionCache_v1';
 
-function todayISO() { return new Date().toISOString().slice(0,10); }
-function addDays(dateStr, delta) { const d = new Date(dateStr); d.setDate(d.getDate()+delta); return d.toISOString().slice(0,10); }
+// Local date helpers (avoid UTC off-by-one for users east of GMT)
+function localDateStr(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const d = String(date.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+function todayISO(){ return localDateStr(); }
+function addDays(dateStr, delta){
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  dt.setDate(dt.getDate()+delta);
+  return localDateStr(dt);
+}
 
 export function CompletionProvider({ children }) {
   // Habit context included for potential future invalidation; not directly used now
@@ -46,6 +58,8 @@ export function CompletionProvider({ children }) {
   }, [cache]);
 
   const toggleStatus = useCallback(async (habitId, isoDate) => {
+    const today = todayISO();
+    if (isoDate !== today) return getStatus(habitId, isoDate); // ignore non-today toggles
     await ensureLoaded(habitId);
     const current = getStatus(habitId, isoDate);
     const next = current === 'incomplete' ? 'completed' : current === 'completed' ? 'skipped' : 'incomplete';
@@ -61,14 +75,49 @@ export function CompletionProvider({ children }) {
     return streak;
   }, [cache]);
 
+  // Streak with a single-miss tolerance: user can miss at most 1 day;
+  // upon encountering the 2nd missed (incomplete or skipped not counted as completed) day, streak ends.
+  const getStreakTolerance = useCallback((habitId) => {
+    const map = cache[habitId]; if (!map) return 0;
+    let day = todayISO();
+    let streak = 0;
+    let misses = 0;
+    while (true) {
+      const status = map[day];
+      if (status === 'completed') {
+        streak++;
+      } else {
+        misses++;
+        if (misses > 1) break; // second miss stops streak accumulation
+      }
+  day = addDays(day, -1);
+      // Safety stop after 365 days to avoid infinite loop in edge cases
+      if (streak + misses > 365) break;
+    }
+    return streak; // only counts completed days, not missed placeholders
+  }, [cache]);
+
   const getTotals = useCallback((habitId) => {
     const map = cache[habitId]; if (!map) return { completed:0, skipped:0 };
     let completed=0, skipped=0; Object.values(map).forEach(s => { if (s==='completed') completed++; else if (s==='skipped') skipped++; });
     return { completed, skipped };
   }, [cache]);
 
-  const value = { ensureLoaded, getStatus, toggleStatus, getStreak, getTotals };
+  const removeHabit = useCallback((habitId) => {
+    setCache(prev => {
+      if (!(habitId in prev)) return prev;
+      const clone = { ...prev };
+      delete clone[habitId];
+      return clone;
+    });
+  }, []);
+
+  const value = { ensureLoaded, getStatus, toggleStatus, getStreak, getStreakTolerance, getTotals, removeHabit };
   return <CompletionContext.Provider value={value}>{children}</CompletionContext.Provider>;
 }
 
-export function useCompletion() { const ctx = useContext(CompletionContext); if(!ctx) throw new Error('useCompletion must be used within CompletionProvider'); return ctx; }
+export function useCompletion() {
+  const ctx = useContext(CompletionContext);
+  if (!ctx) throw new Error('useCompletion must be used within CompletionProvider');
+  return ctx;
+}

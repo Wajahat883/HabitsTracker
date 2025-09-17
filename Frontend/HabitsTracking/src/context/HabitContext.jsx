@@ -125,6 +125,9 @@ export const HabitProvider = ({ children }) => {
   const value = {
     habits,
     setHabits,
+    // convenience mutators for local optimistic updates
+    updateHabitLocal: (updated) => setHabits(prev => prev.map(h => h._id === updated._id ? updated : h)),
+    deleteHabitLocal: (id) => setHabits(prev => prev.filter(h => h._id !== id)),
     selectedHabit,
     setSelectedHabit,
     editingHabit,
