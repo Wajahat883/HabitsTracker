@@ -103,7 +103,7 @@ function computeFlexibleStreak(habit, logs, endDateStr) {
 
 export const createHabit = async (req, res, next) => {
   try {
-    const { title, description, frequencyType, daysOfWeek, timesPerPeriod, colorTag, icon, durationMinutes, targetCount, customConfig } = req.body;
+  const { title, description, frequencyType, daysOfWeek, timesPerPeriod, colorTag, icon, durationMinutes, targetCount, customConfig, startDate, endDate, reminderTime } = req.body;
     if (frequencyType === 'weekly' && (!daysOfWeek || daysOfWeek.length === 0)) {
       throw new ApiError(400, 'daysOfWeek required for weekly habits');
     }
@@ -119,6 +119,15 @@ export const createHabit = async (req, res, next) => {
         return res.status(200).json(new ApiResponse(200, existing, 'Daily habit with this title already exists; reusing existing habit'));
       }
     }
+    // Date / time validation
+    const dateRegex = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
+    if (startDate && !dateRegex.test(startDate)) throw new ApiError(400, 'Invalid startDate format');
+    if (endDate && !dateRegex.test(endDate)) throw new ApiError(400, 'Invalid endDate format');
+    if (startDate && endDate) {
+      if (endDate < startDate) throw new ApiError(400, 'endDate must be >= startDate');
+    }
+    const timeRegex = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+    if (reminderTime && !timeRegex.test(reminderTime)) throw new ApiError(400, 'Invalid reminderTime format');
     const habit = await Habit.create({
       user: req.user.userId,
       title,
@@ -130,7 +139,10 @@ export const createHabit = async (req, res, next) => {
       icon,
       durationMinutes,
       targetCount,
-      customConfig
+      customConfig,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      reminderTime: reminderTime || undefined
     });
     const io = req.app.get('io');
     if (io) io.to(`user:${req.user.userId}`).emit('habit:updated', { type: 'habitCreated', habit });
@@ -173,13 +185,23 @@ export const updateHabit = async (req, res, next) => {
       'icon',
       'durationMinutes',
       'targetCount',
-      'customConfig'
+      'customConfig',
+      'startDate',
+      'endDate',
+      'reminderTime'
     ];
     const updates = {};
     for (const k of allowed) if (k in req.body) updates[k] = req.body[k];
     if (updates.frequencyType === 'weekly' && (!updates.daysOfWeek || updates.daysOfWeek.length === 0)) {
       throw new ApiError(400, 'daysOfWeek required for weekly habits');
     }
+    // Validate dates/time if supplied
+    const dateRegex2 = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
+    if ('startDate' in updates && updates.startDate && !dateRegex2.test(updates.startDate)) throw new ApiError(400, 'Invalid startDate format');
+    if ('endDate' in updates && updates.endDate && !dateRegex2.test(updates.endDate)) throw new ApiError(400, 'Invalid endDate format');
+    if (updates.startDate && updates.endDate && updates.endDate < updates.startDate) throw new ApiError(400, 'endDate must be >= startDate');
+    const timeRegex2 = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+    if ('reminderTime' in updates && updates.reminderTime && !timeRegex2.test(updates.reminderTime)) throw new ApiError(400, 'Invalid reminderTime format');
     const habit = await Habit.findOneAndUpdate({ _id: req.params.id, user: req.user.userId }, updates, { new: true });
     if (!habit) throw new ApiError(404, 'Habit not found');
     const io = req.app.get('io');

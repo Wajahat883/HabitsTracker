@@ -21,8 +21,15 @@ export default function AllUsersList() {
       setIsSearching(false);
       
       const data = await getAllUsers(currentPage, 20);
-      setUsers(data.users);
-      setTotalPages(data.totalPages);
+      const list = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data?.users)
+            ? data.users
+            : [];
+      setUsers(list);
+      setTotalPages(Number(data?.totalPages) > 0 ? data.totalPages : 1);
     } catch (error) {
       console.error('Error loading users:', error);
       setError('Failed to load users');
@@ -38,7 +45,14 @@ export default function AllUsersList() {
       setIsSearching(true);
       
       const results = await searchUsers(searchQuery);
-      setUsers(results);
+      const list = Array.isArray(results)
+        ? results
+        : Array.isArray(results?.data)
+          ? results.data
+          : Array.isArray(results?.users)
+            ? results.users
+            : [];
+      setUsers(list);
       setTotalPages(1); // Search doesn't have pagination
     } catch (error) {
       console.error('Error searching users:', error);
@@ -99,7 +113,7 @@ export default function AllUsersList() {
       <div className="flex items-center gap-2 mb-6">
         <FaUsers className="text-purple-400" />
         <h3 className="text-white font-semibold">All Users</h3>
-        <span className="text-slate-400 text-sm">({users.length} users)</span>
+  <span className="text-slate-400 text-sm">({Array.isArray(users) ? users.length : 0} users)</span>
       </div>
 
       {/* Search Bar */}
@@ -145,7 +159,7 @@ export default function AllUsersList() {
             <FaSpinner className="animate-spin text-purple-400 text-2xl mx-auto mb-2" />
             <p className="text-slate-400">Loading users...</p>
           </div>
-        ) : users.length === 0 ? (
+  ) : (!Array.isArray(users) || users.length === 0) ? (
           <div className="text-center py-8">
             <FaUsers className="text-slate-500 text-3xl mx-auto mb-2" />
             <p className="text-slate-400">
@@ -153,7 +167,7 @@ export default function AllUsersList() {
             </p>
           </div>
         ) : (
-          users.map((user) => (
+          Array.isArray(users) ? users.map((user) => (
             <div key={user._id} className="flex items-center justify-between p-4 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors">
               <div className="flex items-center gap-4">
                 {/* User Avatar */}
@@ -194,7 +208,7 @@ export default function AllUsersList() {
                 )}
               </button>
             </div>
-          ))
+          )) : null
         )}
       </div>
 

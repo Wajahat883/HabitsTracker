@@ -36,7 +36,13 @@ app.use(cors({
 // Security & performance middleware
 app.use(helmet());
 app.use(compression());
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 400 }));
+
+// Environment-aware rate limiting (more lenient in development)
+const rateLimitConfig = process.env.NODE_ENV === 'production' 
+    ? { windowMs: 15 * 60 * 1000, max: 400 } // Production: 400 requests per 15 minutes
+    : { windowMs: 1 * 60 * 1000, max: 1000 }; // Development: 1000 requests per minute
+
+app.use(rateLimit(rateLimitConfig));
 app.use(morgan('dev'));
 
 app.use(express.json({ limit: "20kb" }));

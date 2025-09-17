@@ -18,10 +18,24 @@ export default function FriendsList() {
       setLoading(true);
       const friendsData = await fetchFriends();
       const requestsData = await fetchFriendRequests();
-      setFriends(friendsData);
-      setFriendRequests(requestsData);
+      const normFriends = Array.isArray(friendsData)
+        ? friendsData
+        : Array.isArray(friendsData?.data)
+          ? friendsData.data
+          : Array.isArray(friendsData?.friends)
+            ? friendsData.friends
+            : [];
+      const normRequests = Array.isArray(requestsData)
+        ? requestsData
+        : Array.isArray(requestsData?.data)
+          ? requestsData.data
+          : Array.isArray(requestsData?.requests)
+            ? requestsData.requests
+            : [];
+      setFriends(normFriends);
+      setFriendRequests(normRequests);
     } catch (e) {
-      setError(e.message);
+      setError(e.message || 'Failed to load friends');
     } finally {
       setLoading(false);
     }
@@ -32,7 +46,7 @@ export default function FriendsList() {
     try {
       await removeFriend(friendId);
       setFriends(friends.filter(f => f._id !== friendId));
-    } catch (err) {
+    } catch {
       setError('Failed to remove friend');
     }
   };
@@ -41,7 +55,7 @@ export default function FriendsList() {
     try {
       await acceptFriendRequest(requestId);
       loadFriends(); // Reload to get updated lists
-    } catch (err) {
+    } catch {
       setError('Failed to accept friend request');
     }
   };
@@ -50,98 +64,96 @@ export default function FriendsList() {
     try {
       await rejectFriendRequest(requestId);
       loadFriends(); // Reload to get updated lists
-    } catch (err) {
+    } catch {
       setError('Failed to reject friend request');
     }
   };
 
   if (loading) return (
-    <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
+    <div className="card animate-fadein">
       <div className="flex items-center gap-2 mb-4">
         <FaUserFriends className="text-blue-400" />
-        <h3 className="text-white font-semibold">Friends</h3>
+        <h3 className="text-xl font-bold text-blue-400">Friends</h3>
       </div>
-      <div className="text-slate-400 text-sm">Loading friends...</div>
+      <div className="text-muted text-sm animate-pulse">Loading friends...</div>
     </div>
   );
 
   if (error) return (
-    <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
+    <div className="card animate-fadein">
       <div className="flex items-center gap-2 mb-4">
         <FaUserFriends className="text-blue-400" />
-        <h3 className="text-white font-semibold">Friends</h3>
+        <h3 className="text-xl font-bold text-blue-400">Friends</h3>
       </div>
-      <div className="text-red-400 text-sm">{error}</div>
+      <div className="text-red-400 text-sm animate-shake">{error}</div>
     </div>
   );
 
   return (
-    <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
+    <div className="card animate-fadein">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
-          <FaUserFriends className="text-blue-400" />
-          <h3 className="text-white font-semibold">Friends & Requests</h3>
+          <FaUserFriends className="text-blue-400 text-2xl" />
+          <h3 className="text-xl font-bold text-blue-400">Friends & Requests</h3>
         </div>
-        <button onClick={loadFriends} className="text-xs px-3 py-1 bg-slate-600 rounded text-white hover:bg-slate-500 transition-colors">
-          Refresh
-        </button>
+        <button onClick={loadFriends} className="btn btn-accent text-xs animate-pop">Refresh</button>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 bg-slate-700 p-1 rounded-lg">
+      <div className="flex gap-1 mb-4 bg-[var(--color-bg-alt)] p-1 rounded-lg animate-fadein">
         <button
           onClick={() => setActiveTab('friends')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-            activeTab === 'friends' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+          className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md text-sm font-semibold transition-all duration-150 ${
+            activeTab === 'friends' ? 'bg-blue-600 text-white shadow animate-pop' : 'text-muted hover:text-white'
           }`}
         >
           <FaUserFriends />
-          Friends ({friends.length})
+          Friends ({Array.isArray(friends) ? friends.length : 0})
         </button>
         <button
           onClick={() => setActiveTab('requests')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-            activeTab === 'requests' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+          className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md text-sm font-semibold transition-all duration-150 ${
+            activeTab === 'requests' ? 'bg-blue-600 text-white shadow animate-pop' : 'text-muted hover:text-white'
           }`}
         >
           <FaUserClock />
-          Requests ({friendRequests.length})
+          Requests ({Array.isArray(friendRequests) ? friendRequests.length : 0})
         </button>
       </div>
 
       {/* Friends Tab */}
       {activeTab === 'friends' && (
-        <div>
-          {friends.length === 0 ? (
-            <div className="text-slate-400 text-sm text-center py-8">
-              <FaUserPlus className="mx-auto mb-2 text-2xl" />
+        <div className="animate-fadein">
+          {!Array.isArray(friends) || friends.length === 0 ? (
+            <div className="text-muted text-sm text-center py-8 animate-fadein">
+              <FaUserPlus className="mx-auto mb-2 text-2xl animate-pop" />
               <p>No friends yet.</p>
               <p>Start by inviting someone!</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {friends.map((friend) => (
-                <div key={friend._id} className="flex items-center justify-between p-3 bg-slate-700 rounded-lg">
+              {Array.isArray(friends) ? friends.map((friend) => (
+                <div key={friend._id} className="flex items-center justify-between p-3 bg-[var(--color-bg-alt)] rounded-lg shadow-sm animate-fadein">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-lg animate-pop">
                       {friend.name ? friend.name.charAt(0).toUpperCase() : 'U'}
                     </div>
                     <div>
                       <div className="text-white font-medium">{friend.name || 'Unknown User'}</div>
-                      <div className="text-slate-400 text-sm">{friend.email}</div>
+                      <div className="text-muted text-sm">{friend.email}</div>
                       <div className="text-xs text-green-400 mt-1">✓ Connected</div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <button
-                      className="p-2 text-slate-400 hover:text-blue-400 transition-colors"
+                      className="btn px-2 py-1 text-blue-400 hover:text-blue-600 animate-pop"
                       title="View Progress"
                     >
                       <FaEye />
                     </button>
                     <button
-                      className="p-2 text-slate-400 hover:text-red-400 transition-colors"
+                      className="btn btn-danger px-2 py-1 animate-pop"
                       title="Remove Friend"
                       onClick={() => handleRemoveFriend(friend._id)}
                     >
@@ -149,7 +161,7 @@ export default function FriendsList() {
                     </button>
                   </div>
                 </div>
-              ))}
+              )) : null}
             </div>
           )}
         </div>
@@ -157,37 +169,37 @@ export default function FriendsList() {
 
       {/* Friend Requests Tab */}
       {activeTab === 'requests' && (
-        <div>
-          {friendRequests.length === 0 ? (
-            <div className="text-slate-400 text-sm text-center py-8">
-              <FaUserClock className="mx-auto mb-2 text-2xl" />
+        <div className="animate-fadein">
+          {!Array.isArray(friendRequests) || friendRequests.length === 0 ? (
+            <div className="text-muted text-sm text-center py-8 animate-fadein">
+              <FaUserClock className="mx-auto mb-2 text-2xl animate-pop" />
               <p>No pending friend requests.</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {friendRequests.map((request) => (
-                <div key={request._id} className="flex items-center justify-between p-3 bg-slate-700 rounded-lg border-l-4 border-yellow-500">
+              {Array.isArray(friendRequests) ? friendRequests.map((request) => (
+                <div key={request._id} className="flex items-center justify-between p-3 bg-[var(--color-bg-alt)] rounded-lg border-l-4 border-yellow-500 shadow-sm animate-fadein">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center text-white font-semibold">
+                    <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center text-white font-semibold text-lg animate-pop">
                       {request.from?.name ? request.from.name.charAt(0).toUpperCase() : 'U'}
                     </div>
                     <div>
                       <div className="text-white font-medium">{request.from?.name || 'Unknown User'}</div>
-                      <div className="text-slate-400 text-sm">{request.from?.email}</div>
+                      <div className="text-muted text-sm">{request.from?.email}</div>
                       <div className="text-xs text-yellow-400 mt-1">🔔 Wants to be friends</div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <button
-                      className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors flex items-center gap-1"
+                      className="btn btn-success px-3 py-1 flex items-center gap-1 animate-pop"
                       onClick={() => handleAcceptRequest(request._id)}
                     >
                       <FaCheck />
                       Accept
                     </button>
                     <button
-                      className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors flex items-center gap-1"
+                      className="btn btn-danger px-3 py-1 flex items-center gap-1 animate-pop"
                       onClick={() => handleRejectRequest(request._id)}
                     >
                       <FaTimes />
@@ -195,14 +207,14 @@ export default function FriendsList() {
                     </button>
                   </div>
                 </div>
-              ))}
+              )) : null}
             </div>
           )}
         </div>
       )}
 
       {error && (
-        <div className="mt-4 p-3 bg-red-900/50 border border-red-700 rounded-md text-red-300 text-sm">
+        <div className="mt-4 p-3 bg-red-900/50 border border-red-700 rounded-md text-red-300 text-sm animate-shake">
           {error}
         </div>
       )}

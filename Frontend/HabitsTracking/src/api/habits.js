@@ -1,67 +1,52 @@
-// Use 5000 (backend default) instead of 4000 to prevent mismatch / connection refused
-const API_BASE = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000';
-// debug log once
-if (typeof window !== 'undefined' && !window.__HABIT_API_BASE_LOGGED__) {
-  window.__HABIT_API_BASE_LOGGED__ = true;
-  console.log('[HabitsAPI] Using API base:', API_BASE);
-}
-
-const jsonHeaders = { 'Content-Type': 'application/json' };
+import api from '../config/axios';
 
 export async function fetchHabits({ archived = false } = {}) {
-  const res = await fetch(`${API_BASE}/api/habits?archived=${archived}`, { credentials: 'include' });
-  if (!res.ok) throw new Error('Failed to load habits');
-  const data = await res.json();
-  return data.data || [];
+  const response = await api.get(`/habits?archived=${archived}`);
+  return response.data || [];
 }
 
 export async function createHabit(payload) {
-  const res = await fetch(`${API_BASE}/api/habits`, { method: 'POST', credentials: 'include', headers: jsonHeaders, body: JSON.stringify(payload) });
-  if (!res.ok) throw new Error('Failed to create habit');
-  return (await res.json()).data;
+  const response = await api.post('/habits', payload);
+  return response.data;
 }
 
 export async function updateHabit(id, payload) {
-  const res = await fetch(`${API_BASE}/api/habits/${id}`, { method: 'PATCH', credentials: 'include', headers: jsonHeaders, body: JSON.stringify(payload) });
-  if (!res.ok) throw new Error('Failed to update habit');
-  return (await res.json()).data;
+  const response = await api.patch(`/habits/${id}`, payload);
+  return response.data;
+}
+
+export async function fetchHabit(id) {
+  const response = await api.get(`/habits/${id}`);
+  return response.data;
 }
 
 export async function archiveHabit(id) {
-  const res = await fetch(`${API_BASE}/api/habits/${id}/archive`, { method: 'PATCH', credentials: 'include' });
-  if (!res.ok) throw new Error('Failed to archive habit');
-  return (await res.json()).data;
+  const response = await api.patch(`/habits/${id}/archive`);
+  return response.data;
 }
 
 export async function restoreHabit(id) {
-  const res = await fetch(`${API_BASE}/api/habits/${id}/restore`, { method: 'PATCH', credentials: 'include' });
-  if (!res.ok) throw new Error('Failed to restore habit');
-  return (await res.json()).data;
+  const response = await api.patch(`/habits/${id}/restore`);
+  return response.data;
 }
 
 export async function deleteHabit(id) {
-  const res = await fetch(`${API_BASE}/api/habits/${id}`, { method: 'DELETE', credentials: 'include' });
-  if (!res.ok) throw new Error('Failed to delete habit');
-  return (await res.json()).data;
+  const response = await api.delete(`/habits/${id}`);
+  return response.data;
 }
 
 export async function saveLog(id, { date, status, note }) {
-  const res = await fetch(`${API_BASE}/api/habits/${id}/logs`, { method: 'POST', credentials: 'include', headers: jsonHeaders, body: JSON.stringify({ date, status, note }) });
-  if (!res.ok) throw new Error('Failed to save log');
-  return (await res.json()).data;
+  const response = await api.post(`/habits/${id}/logs`, { date, status, note });
+  return response.data;
 }
 
 export async function fetchLogs(id, { from, to }) {
-  const url = `${API_BASE}/api/habits/${id}/logs?from=${from}&to=${to}`;
-  const res = await fetch(url, { credentials: 'include' });
-  if (!res.ok) throw new Error('Failed to load logs');
-  return (await res.json()).data || [];
+  const response = await api.get(`/habits/${id}/logs?from=${from}&to=${to}`);
+  return response.data || [];
 }
 
 export async function fetchBatchLogs(habitIds = [], { from, to }) {
   if (!habitIds.length) return {};
-  const url = `${API_BASE}/api/habits/logs/batch/all?habitIds=${habitIds.join(',')}&from=${from}&to=${to}`;
-  const res = await fetch(url, { credentials: 'include' });
-  if (!res.ok) throw new Error('Failed to load batch logs');
-  return (await res.json()).data || {};
+  const response = await api.get(`/habits/logs/batch/all?habitIds=${habitIds.join(',')}&from=${from}&to=${to}`);
+  return response.data || {};
 }

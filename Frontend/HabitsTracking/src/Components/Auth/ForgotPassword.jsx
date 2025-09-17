@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "../../config/axios";
+import { showToast } from "../../config/toast";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -13,10 +14,14 @@ const ForgotPassword = () => {
     setLoading(true);
     setMessage("");
     try {
-      const res = await axios.post(`${API_URL}/api/auth/forgot-password`, { email });
-      setMessage(res.data.message || "Password reset email sent!");
+      const res = await api.post('/auth/forgot-password', { email });
+      const message = res.data.message || "Password reset email sent!";
+      setMessage(message);
+      showToast.success(message);
     } catch (err) {
-      setMessage(err.response?.data?.message || "Failed to send reset email");
+      const errorMessage = err.response?.data?.message || "Failed to send reset email";
+      setMessage(errorMessage);
+      showToast.error(errorMessage);
     } finally {
       setLoading(false);
     }

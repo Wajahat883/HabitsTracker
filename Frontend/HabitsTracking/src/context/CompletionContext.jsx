@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useCallback, useEffect, useState } from 'react';
+import React, { createContext, useContext, useCallback, useEffect, useState, useMemo } from 'react';
 import { fetchLogs, saveLog } from '../api/habits';
-import { useHabitContext } from './useHabitContext';
 
 /*
 CompletionContext: provides unified access to habit completion statuses.
@@ -31,8 +30,7 @@ function addDays(dateStr, delta){
 }
 
 export function CompletionProvider({ children }) {
-  // Habit context included for potential future invalidation; not directly used now
-  useHabitContext();
+  // Removed useHabitContext to prevent re-renders
   const [cache, setCache] = useState(() => {
     try { return JSON.parse(localStorage.getItem(LOCAL_KEY)) || {}; } catch { return {}; }
   });
@@ -112,10 +110,21 @@ export function CompletionProvider({ children }) {
     });
   }, []);
 
-  const value = { ensureLoaded, getStatus, toggleStatus, getStreak, getStreakTolerance, getTotals, removeHabit };
+  // Derive array form for UI components needing full list per habit
+  const logsByHabit = useMemo(() => {
+    const out = {};
+    for (const hid of Object.keys(cache)) {
+      out[hid] = Object.entries(cache[hid]).map(([date,status]) => ({ date, status }));
+    }
+    return out;
+  }, [cache]);
+
+  const value = useMemo(() => ({ ensureLoaded, getStatus, toggleStatus, getStreak, getStreakTolerance, getTotals, removeHabit, logsByHabit }), [ensureLoaded, getStatus, toggleStatus, getStreak, getStreakTolerance, getTotals, removeHabit, logsByHabit]);
   return <CompletionContext.Provider value={value}>{children}</CompletionContext.Provider>;
 }
 
+// Hook to use completion context
+// Exported in a separate file would be better for fast refresh, but keeping here for simplicity
 export function useCompletion() {
   const ctx = useContext(CompletionContext);
   if (!ctx) throw new Error('useCompletion must be used within CompletionProvider');

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { FaUpload, FaSpinner, FaImage } from "react-icons/fa";
-import axios from "axios";
+import api from "../../config/axios";
+import { showToast } from "../../config/toast";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -34,14 +35,17 @@ const ProfilePictureUpload = ({ onUpload, currentPicture }) => {
     const formData = new FormData();
     formData.append("profilePicture", file);
     try {
-      const res = await axios.post(`${API_URL}/api/user/upload-profile-picture`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-        withCredentials: true,
+      const res = await api.post('/user/upload-profile-picture', formData, {
+        headers: { "Content-Type": "multipart/form-data" }
       });
-      setMessage("Upload successful!");
+      const message = "Upload successful!";
+      setMessage(message);
+      showToast.success(message);
       if (onUpload) onUpload(res.data);
     } catch (err) {
-      setMessage(err.response?.data?.message || "Upload failed");
+      const errorMessage = err.response?.data?.message || "Upload failed";
+      setMessage(errorMessage);
+      showToast.error(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FaChevronDown, FaChevronUp, FaCheckCircle } from 'react-icons/fa';
-import { toast } from 'react-toastify';
+// Success toasts suppressed per requirement (only errors shown)
+import toastError from '../../utils/toastError';
 import { createHabit, updateHabit } from '../../api/habits';
 import { createGroupHabit } from '../../api/groups';
 import { useHabitContext } from '../../context/useHabitContext';
@@ -15,14 +16,17 @@ const defaultForm = {
   groupId: '',
   durationMinutes: '',
   targetCount: '',
-  customConfig: ''
+  customConfig: '',
+  startDate: '',
+  endDate: '',
+  reminderTime: '',
+  icon: ''
 };
 
 export default function HabitForm({ onCreated }) {
   const { groups, setHabits, setEditingHabit, setSelectedHabit, editingHabit } = useHabitContext();
   const [form, setForm] = useState(editingHabit ? { ...defaultForm, ...editingHabit } : defaultForm);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -47,8 +51,11 @@ export default function HabitForm({ onCreated }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    setLoading(true); setError(''); setSuccess(false);
+    setLoading(true); setSuccess(false);
     try {
+      // basic client validation for date ordering
+      if (form.endDate && !form.startDate) throw new Error('Start Date required when End Date is set');
+      if (form.startDate && form.endDate && form.endDate < form.startDate) throw new Error('End Date must be after Start Date');
       const payload = {
         ...form,
         durationMinutes: form.durationMinutes || undefined,
@@ -70,10 +77,9 @@ export default function HabitForm({ onCreated }) {
         }
         setForm(defaultForm);
       }
-      setSuccess(true);
-      toast.success(editingHabit ? 'Habit updated!' : 'Habit created!', { position: 'top-center', autoClose: 1800 });
+  setSuccess(true); // still show inline check icon, but no toast
     } catch (err) {
-      setError(err.message);
+      toastError(err);
     } finally { setLoading(false); }
   };
 
@@ -83,7 +89,6 @@ export default function HabitForm({ onCreated }) {
         {editingHabit ? 'Edit Habit' : 'Create New Habit'}
         {success && <FaCheckCircle className="text-green-400 animate-pop" />}
       </h3>
-      {error && <div className="text-red-400 text-sm mb-2 animate-shake">{error}</div>}
       <div className="space-y-2">
         <label className="block text-base font-medium" htmlFor="habit-title">Title <span className="text-red-400">*</span></label>
         <input id="habit-title" name="title" value={form.title} onChange={handleChange} required minLength={3} maxLength={60}
@@ -121,11 +126,40 @@ export default function HabitForm({ onCreated }) {
           </div>
         </div>
       )}
+      {/* Scheduling Window & Reminder */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-base font-medium">Start Date <span className="text-slate-400 text-xs">(optional)</span></label>
+          <input type="date" name="startDate" value={form.startDate} onChange={handleChange} className="input w-full text-base" />
+        </div>
+        <div>
+          <label className="block text-base font-medium">End Date <span className="text-slate-400 text-xs">(optional)</span></label>
+          <input type="date" name="endDate" value={form.endDate} min={form.startDate || undefined} onChange={handleChange} className="input w-full text-base" />
+        </div>
+        <div>
+          <label className="block text-base font-medium">Time <span className="text-slate-400 text-xs">(optional)</span></label>
+          <input type="time" name="reminderTime" value={form.reminderTime} onChange={handleChange} className="input w-full text-base" />
+        </div>
+      </div>
       <div className="flex items-center gap-4">
         <div className="flex-1">
           <label className="block text-base font-medium">Color</label>
           <input type="color" name="colorTag" value={form.colorTag} onChange={handleChange}
             className="h-10 w-16 p-1 bg-transparent rounded border-2 border-[var(--color-border)]" />
+        </div>
+        <div className="flex-1">
+          <label className="block text-base font-medium">Icon <span className="text-slate-400 text-xs">(optional)</span></label>
+          <select name="icon" value={form.icon} onChange={handleChange} className="select w-full text-base">
+            <option value="">Auto</option>
+            <option value="FaTint">Water</option>
+            <option value="FaBook">Book</option>
+            <option value="FaRunning">Run</option>
+            <option value="FaBed">Sleep</option>
+            <option value="FaBrain">Mind</option>
+            <option value="FaDumbbell">Workout</option>
+            <option value="FaAppleAlt">Food</option>
+            <option value="FaLeaf">Leaf</option>
+          </select>
         </div>
         <div className="flex-1">
           <label className="block text-base font-medium">Group <span className="text-slate-400 text-xs">(optional)</span></label>

@@ -19,15 +19,28 @@ export default function CalendarHeatmap() {
   useEffect(() => {
     let ignore = false;
     (async () => {
-      try { const res = await fetchHeatmap(year); if(!ignore) setData(res||[]); }
-      finally { if(!ignore) setLoading(false); }
+      try {
+        const res = await fetchHeatmap(year);
+        if (!ignore) {
+          const arr = Array.isArray(res)
+            ? res
+            : Array.isArray(res?.data)
+              ? res.data
+              : Array.isArray(res?.heatmap)
+                ? res.heatmap
+                : [];
+          setData(arr);
+        }
+      } finally { if(!ignore) setLoading(false); }
     })();
     return () => { ignore = true; };
   }, [year]);
 
   const byMonth = useMemo(() => {
     const bucket = {};
+    if (!Array.isArray(data)) return bucket;
     data.forEach(d => {
+      if(!d?.date) return;
       const m = d.date.slice(0,7);
       if(!bucket[m]) bucket[m] = [];
       bucket[m].push(d);

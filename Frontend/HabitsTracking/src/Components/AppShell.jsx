@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { FaBars, FaTimes } from 'react-icons/fa';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { FaChevronDown, FaPalette, FaSignOutAlt, FaHome, FaRegSun, FaListAlt, FaUserFriends, FaCheckCircle, FaFolder, FaPlus } from 'react-icons/fa';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/useAuth';
 import UserProfileBadge from '../Components/Common/UserProfileBadge';
 import NotificationBell from '../Components/Notifications/NotificationBell';
+import Home from '../Pages/Home';
+import Dashboard from '../Pages/Dashboard';
 import image from '../assets/logo-habit-tracker.png';
 
 // Basic sidebar items list (labels used for active state)
@@ -19,6 +22,7 @@ const NAV_ITEMS = [
 
 export default function AppShell() {
   const { theme, toggleTheme } = useTheme();
+  const { authenticated: isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -26,7 +30,6 @@ export default function AppShell() {
   const [currentUser, setCurrentUser] = useState(()=> {
     try { return JSON.parse(localStorage.getItem('currentUser')) || {}; } catch { return {}; }
   });
-  const isAuthenticated = !!localStorage.getItem('authToken');
 
   useEffect(()=> {
     const loginHandler = (e) => { if(e.detail){ setCurrentUser(e.detail); } };
@@ -150,7 +153,11 @@ export default function AppShell() {
 
       {/* Main content area */}
       <div className={`pt-20 transition-all duration-200 ${isAuthenticated ? 'md:ml-72' : ''} p-4 md:p-8 min-h-screen bg-[var(--color-bg)]`}> 
-        <Outlet />
+        <Routes>
+          <Route path="/home" element={<Home />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/*" element={<Navigate to="/home" replace />} />
+        </Routes>
       </div>
     </div>
   );

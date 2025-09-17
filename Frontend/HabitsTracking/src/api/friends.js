@@ -1,41 +1,39 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import api from '../config/axios';
 
 async function jsonGet(path) {
-  const res = await fetch(`${API_BASE}${path}`, { credentials: 'include' });
-  if (!res.ok) throw new Error('Request failed');
-  return (await res.json()).data;
+  const response = await api.get(path);
+  return response.data;
 }
 
 async function jsonPost(path, body) {
-  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  if (!res.ok) throw new Error('Request failed');
-  return (await res.json()).data;
+  const response = await api.post(path, body);
+  return response.data;
 }
 
 export function fetchFriends() {
-  return jsonGet('/api/friends');
+  return jsonGet('/friends');
 }
 
 export function inviteFriend(payload) {
-  return jsonPost('/api/friends/invite', payload);
+  return jsonPost('/friends/invite', payload);
 }
 
 export function acceptInvite(inviteId) {
-  return jsonPost('/api/friends/accept', { inviteId });
+  return jsonPost('/friends/accept', { inviteId });
 }
 
 export function removeFriend(id) {
-  return fetch(`${API_BASE}/api/friends/${id}`, { method: 'DELETE', credentials: 'include' }).then(r => { if(!r.ok) throw new Error('Request failed'); return r.json(); }).then(j=>j.data);
+  return api.delete(`/friends/${id}`).then(response => response.data);
 }
 
 export function fetchFriendRequests() {
-  return jsonGet('/api/friends/requests');
+  return jsonGet('/friends/requests');
 }
 
 export function acceptFriendRequest(requestId) {
-  return jsonPost('/api/friends/requests/accept', { requestId });
+  return jsonPost('/friends/requests/accept', { requestId });
 }
 
 export function rejectFriendRequest(requestId) {
-  return jsonPost('/api/friends/requests/reject', { requestId });
+  return jsonPost('/friends/requests/reject', { requestId });
 }

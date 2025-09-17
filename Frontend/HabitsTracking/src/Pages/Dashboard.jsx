@@ -70,8 +70,13 @@ const Dashboard = () => {
   const [editingArea, setEditingArea] = useState(null);
   const [areaNameDraft, setAreaNameDraft] = useState('');
   const saveAreaEdit = () => {
-    if (!areaNameDraft.trim() || !editingArea) { setEditingArea(null); return; }
-    setAreas(prev => prev.map(a => a.id === editingArea.id ? { ...a, name: areaNameDraft.trim() } : a));
+    if (!areaNameDraft.trim() || !editingArea) { 
+      setEditingArea(null); 
+      return;
+     }
+    setAreas(prev => prev.map(a => a.id === editingArea.id ?
+       { ...a, name: areaNameDraft.trim() } : 
+       a));
     if (activeSection === `AREA_${editingArea.id}`) {
       // trigger re-render; active section label uses area name from state
     }
@@ -86,8 +91,8 @@ const Dashboard = () => {
   const {
     habits,
   // setHabits,
-    selectedHabit,
-    setSelectedHabit,
+  // selectedHabit, // removed with Quick Habit Tracker
+  // setSelectedHabit, // removed with Quick Habit Tracker
   // editingHabit,
   // setEditingHabit,
   // habitLoading,
@@ -109,8 +114,9 @@ const Dashboard = () => {
 
   // Deduplicate friends by _id to avoid duplicate option keys
   const uniqueFriends = useMemo(() => {
+    const arr = Array.isArray(friends) ? friends : (Array.isArray(friends?.data) ? friends.data : (Array.isArray(friends?.friends) ? friends.friends : []));
     const seen = new Set();
-    return (friends || []).filter(f => {
+    return arr.filter(f => {
       if (!f || !f._id) return false;
       if (seen.has(f._id)) return false;
       seen.add(f._id);
@@ -194,7 +200,16 @@ const Dashboard = () => {
       labels: userLabels, // Use your habit names as base
       datasets: datasets
     });
-  }, [progressSummary, friendProgress, groupProgress, selectedFriend, setFriendData, setCompareData, habits, getStreak]);
+  }, [
+    progressSummary,
+    friendProgress,
+     groupProgress,
+      selectedFriend,
+       setFriendData, 
+       setCompareData, 
+       habits,
+       getStreak
+      ]);
 
   // Friends progress (aggregate) for All Friends bar chart
   const [friendsProgress, setFriendsProgress] = useState([]);
@@ -219,13 +234,30 @@ const Dashboard = () => {
 
   // Auth/session effects removed – Dashboard assumes authenticated context via AppShell
 
+  // ---- Derived Dashboard Metrics ----
+  const todayISO = new Date().toISOString().split('T')[0];
+  const totalHabits = Array.isArray(habits) ? habits.length : 0;
+  const activeHabits = Array.isArray(habits) ? habits.filter(h => !h.endDate || h.endDate >= todayISO).length : 0;
+  const longestStreak = (() => {
+    const ps = progressSummary?.habitStreaks || [];
+    let max = 0;
+    for (const hs of ps) if (typeof hs.streak === 'number' && hs.streak > max) max = hs.streak;
+    if (max === 0 && Array.isArray(habits)) {
+      for (const h of habits) { const s = getStreak(h._id); if (s > max) max = s; }
+    }
+    return max;
+  })();
+  const friendsCount = uniqueFriends.length;
+  const todayCompletionCount = progressSummary?.todayCompletions || 0; // fallback
+  const completionRate = progressSummary?.overallCompletionRate != null ? Math.round(progressSummary.overallCompletionRate) : null;
+
   return (
-    <div className="p-10 min-h-screen grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto text-primary">
+    <div className="p-6 md:p-10 min-h-screen grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto text-primary animate-fadein">
       {editingArea && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={(e)=> { if(e.target===e.currentTarget) cancelAreaEdit(); }}>
-          <div className="bg-surface border border-app rounded-xl w-full max-w-sm p-5 relative">
-            <button className="absolute top-2 right-2 text-muted hover:text-primary" onClick={cancelAreaEdit}>✕</button>
-            <h4 className="text-primary font-semibold mb-4 text-sm">Edit Area</h4>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fadein" onClick={(e)=> { if(e.target===e.currentTarget) cancelAreaEdit(); }}>
+          <div className="card w-full max-w-sm p-5 relative animate-pop">
+            <button className="absolute top-2 right-2 text-muted hover:text-blue-400 transition-colors text-xl" onClick={cancelAreaEdit} aria-label="Close">✕</button>
+            <h4 className="text-blue-400 font-bold mb-4 text-sm">Edit Area</h4>
             <div className="space-y-3">
               <div>
                 <label className="block text-[11px] uppercase tracking-wide text-muted mb-1">Area Name</label>
@@ -235,69 +267,71 @@ const Dashboard = () => {
                   value={areaNameDraft}
                   onChange={(e)=> setAreaNameDraft(e.target.value)}
                   onKeyDown={(e)=> e.key==='Enter' && saveAreaEdit()}
-                  className="w-full bg-app-alt border border-app rounded-lg p-3 text-primary focus:outline-none focus:border-accent text-sm"
+                  className="input w-full text-sm"
                   placeholder="Enter area name"
                 />
               </div>
               <div className="flex gap-2 pt-1">
-                <button onClick={saveAreaEdit} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-xs">Save</button>
-                <button onClick={cancelAreaEdit} className="flex-1 bg-app-alt hover:bg-surface border border-app text-primary font-medium py-2 rounded-lg text-xs">Cancel</button>
+                <button onClick={saveAreaEdit} className="btn btn-success flex-1 animate-pop">Save</button>
+                <button onClick={cancelAreaEdit} className="btn flex-1 animate-pop">Cancel</button>
               </div>
             </div>
           </div>
         </div>
       )}
-  {/* Area Manager Modal */}
-    {showAreaManager && (
+      {/* Area Manager Modal */}
+      {showAreaManager && (
         <AreaManagerModal
           areas={areas}
-      onCreate={(area)=> { setAreas(prev => [area, ...prev]); setActiveArea(area); setActiveSection(`AREA_${area.id}`); setShowAreaManager(false); }}
-      onSelect={(area)=> { setActiveArea(area); setActiveSection(`AREA_${area.id}`); setShowAreaManager(false); }}
+          onCreate={(area)=> { setAreas(prev => [area, ...prev]); setActiveArea(area); setActiveSection(`AREA_${area.id}`); setShowAreaManager(false); }}
+          onSelect={(area)=> { setActiveArea(area); setActiveSection(`AREA_${area.id}`); setShowAreaManager(false); }}
           onClose={()=> setShowAreaManager(false)}
         />
       )}
       {/* Dashboard Content */}
-        {/* Dashboard Section */}
-          {activeSection === "Dashboard" && (
-            <>
-              {/* Friend Selection Control */}
-              <div className="col-span-1 md:col-span-2 bg-surface rounded-xl shadow-lg p-6 border border-app">
-                <h3 className="text-white font-semibold mb-4">Select Friend for Comparison</h3>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <select
-                      value={selectedFriend || ""}
-                      onChange={(e) => {
-                        const friendId = e.target.value;
-                        setSelectedFriend(friendId);
-                        if (friendId) {
-                          fetchFriendProgressData(friendId);
-                        } else {
-                          setFriendProgress(null);
-                        }
-                      }}
-                      className="w-full bg-app-alt text-primary p-3 rounded-lg border border-app focus:border-accent focus:outline-none"
-                    >
-                      <option value="">Select a friend to compare...</option>
-                      {uniqueFriends.map(f => <option key={`friend-opt-${f._id}`} value={f._id}>{f.name}</option>)}
-                    </select>
-                  </div>
-                  {selectedFriend && (
-                    <button
-                      onClick={() => {
-                        setSelectedFriend(null);
-                        setFriendProgress(null);
-                      }}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-                    >
-                      Clear
-                    </button>
-                  )}
+      {/* Dashboard Section */}
+      {activeSection === "Dashboard" && (
+        <>
+          {/* Hero / Overview Section */}
+          <div className="col-span-1 md:col-span-2 relative overflow-hidden rounded-3xl p-8 md:p-10 bg-gradient-to-br from-blue-700 via-indigo-700 to-purple-700 shadow-xl text-white animate-fadein">
+            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.25),transparent_60%)]" />
+            <div className="relative flex flex-col lg:flex-row lg:items-end gap-8">
+              <div className="flex-1">
+                <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">Your Habit Performance</h1>
+                <p className="text-sm md:text-base text-indigo-100 max-w-xl leading-relaxed">Stay consistent, track streaks, and compare with friends. This dashboard gives you a fast overview of progress and opportunities to improve.</p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 w-full lg:w-auto">
+                <div className="backdrop-blur bg-white/10 rounded-2xl p-4 border border-white/15 shadow-inner">
+                  <div className="text-[11px] uppercase tracking-wide text-indigo-200 mb-1">Habits</div>
+                  <div className="text-2xl font-bold">{totalHabits}</div>
+                  <div className="text-[11px] text-indigo-300">{activeHabits} active</div>
+                </div>
+                <div className="backdrop-blur bg-white/10 rounded-2xl p-4 border border-white/15 shadow-inner">
+                  <div className="text-[11px] uppercase tracking-wide text-indigo-200 mb-1">Longest Streak</div>
+                  <div className="text-2xl font-bold">{longestStreak}</div>
+                  <div className="text-[11px] text-indigo-300">days</div>
+                </div>
+                <div className="backdrop-blur bg-white/10 rounded-2xl p-4 border border-white/15 shadow-inner hidden sm:block">
+                  <div className="text-[11px] uppercase tracking-wide text-indigo-200 mb-1">Today Done</div>
+                  <div className="text-2xl font-bold">{todayCompletionCount}</div>
+                  <div className="text-[11px] text-indigo-300">completions</div>
+                </div>
+                <div className="backdrop-blur bg-white/10 rounded-2xl p-4 border border-white/15 shadow-inner">
+                  <div className="text-[11px] uppercase tracking-wide text-indigo-200 mb-1">Friends</div>
+                  <div className="text-2xl font-bold">{friendsCount}</div>
+                  <div className="text-[11px] text-indigo-300">connected</div>
+                </div>
+                <div className="backdrop-blur bg-white/10 rounded-2xl p-4 border border-white/15 shadow-inner">
+                  <div className="text-[11px] uppercase tracking-wide text-indigo-200 mb-1">Completion</div>
+                  <div className="text-2xl font-bold">{completionRate != null ? `${completionRate}%` : '—'}</div>
+                  <div className="text-[11px] text-indigo-300">overall</div>
                 </div>
               </div>
+            </div>
+          </div>
 
-              {/* Four Bar Charts Layout */}
-              {/* 1. Your Progress (Bar) */}
+          {/* Four Bar Charts Layout */}
+          {/* 1. Your Progress (Bar) */}
               <div className="bg-surface rounded-xl shadow-lg p-6 border border-app">
                 <h2 className="text-xl font-bold text-blue-300 mb-4">Your Progress</h2>
                 <Bar 
@@ -380,41 +414,7 @@ const Dashboard = () => {
               {/* Removed old habit folder grid */}
 
               {/* Quick Habit Tracker */}
-              <div className="col-span-1 md:col-span-2 bg-surface rounded-xl shadow-lg p-6 border border-app">
-                <h3 className="text-white font-semibold mb-4">Quick Habit Tracker</h3>
-                <p className="text-muted text-sm mb-4">Select a habit to track your daily progress and see streaks in charts above</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-secondary text-sm mb-2">Select Habit to Track</label>
-                    <select
-                      value={selectedHabit?._id || ""}
-                      onChange={(e) => {
-                        const habitId = e.target.value;
-                        const habit = habits.find(h => h._id === habitId);
-                        setSelectedHabit(habit || null);
-                      }}
-                      className="w-full bg-app-alt text-primary p-3 rounded-lg border border-app focus:border-accent focus:outline-none"
-                    >
-                      <option value="">Select a habit to track...</option>
-                      {habits.map(h => <option key={`habit-opt-${h._id}`} value={h._id}>{h.title}</option>)}
-                    </select>
-                  </div>
-                  <div className="flex items-end">
-                    {selectedHabit ? (
-                      <div className="text-green-400 text-sm">
-                        ✓ Tracking: <span className="font-semibold">{selectedHabit.title}</span>
-                      </div>
-                    ) : (
-                      <div className="text-muted text-sm">
-                        No habit selected for tracking
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <HabitTracker />
-                </div>
-              </div>
+              {/* Quick Habit Tracker section removed as per user request */}
               
             </>
           )}

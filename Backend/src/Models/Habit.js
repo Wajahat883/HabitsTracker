@@ -56,6 +56,19 @@ const habitSchema = new mongoose.Schema({
     customConfig: {
         type: mongoose.Schema.Types.Mixed
     },
+    // Scheduling window (inclusive) and optional reminder time (HH:MM 24h)
+    startDate: {
+        type: String,
+        match: /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/
+    },
+    endDate: {
+        type: String,
+        match: /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/
+    },
+    reminderTime: {
+        type: String,
+        match: /^([01][0-9]|2[0-3]):[0-5][0-9]$/
+    },
     isArchived: {
         type: Boolean,
         default: false,

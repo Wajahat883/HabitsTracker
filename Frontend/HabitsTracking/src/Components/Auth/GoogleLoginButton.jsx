@@ -1,5 +1,5 @@
 import { GoogleLogin } from '@react-oauth/google';
-import axios from 'axios';
+import api from '../../config/axios';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -13,14 +13,9 @@ const GoogleLoginButton = ({ onSuccess, onError }) => {
     console.log("Google credential:", credentialResponse);
 
     try {
-      const res = await axios.post(
-        `${API_URL}/api/auth/google`,
-        { token: credentialResponse.credential },
-        {
-          headers: { "Content-Type": "application/json" },
-          withCredentials: true,
-        }
-      );
+      const res = await api.post('/auth/google', { 
+        token: credentialResponse.credential 
+      });
       console.log("Google login response:", res.data);
       // Call onSuccess with the original credentialResponse, not backend response
       if (onSuccess) onSuccess(credentialResponse);

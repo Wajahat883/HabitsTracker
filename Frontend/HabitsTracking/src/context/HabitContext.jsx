@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import useSocket from './useSocket';
 import HabitContext from './HabitContextInternal';
 import { fetchHabits } from '../api/habits';
 import { fetchProgressSummary } from '../api/progress';
 import { fetchGroups, fetchGroupProgress, fetchAllUsersProgress, fetchFriendProgress } from '../api/groups';
 import { fetchFriends } from '../api/friends';
+import { fetchHabit } from '../api/habits';
 
 
 export const HabitProvider = ({ children }) => {
@@ -22,21 +23,30 @@ export const HabitProvider = ({ children }) => {
   const [friends, setFriends] = useState([]);
   const [habitListFilter, setHabitListFilter] = useState('active');
   const [lastCreatedHabit, setLastCreatedHabit] = useState(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const { emitHabitUpdate } = useSocket() || {};
+  const emitHabitUpdateRef = useRef(emitHabitUpdate);
+  
+  // Keep the ref updated
+  useEffect(() => {
+    emitHabitUpdateRef.current = emitHabitUpdate;
+  }, [emitHabitUpdate]);
 
   const loadHabits = useCallback(async (suppressEmit = false) => {
     setHabitLoading(true);
     try {
       const data = await fetchHabits();
       setHabits(data);
-  // Broadcast a bulk refresh event for other tabs / friends (minimal payload)
-      if (!suppressEmit && emitHabitUpdate) emitHabitUpdate('all', { type: 'refresh' });
+      // Broadcast a bulk refresh event for other tabs / friends (minimal payload)
+      if (!suppressEmit && emitHabitUpdateRef.current) {
+        emitHabitUpdateRef.current('all', { type: 'refresh' });
+      }
     } catch (error) {
       console.error('Failed to load habits:', error);
     } finally {
       setHabitLoading(false);
     }
-  }, [emitHabitUpdate]);
+  }, []); // No dependencies to prevent re-renders
 
   const loadProgress = async () => {
     try {
@@ -75,33 +85,103 @@ export const HabitProvider = ({ children }) => {
     }
   };
 
+  // Initial data loading - only run once on mount
   useEffect(() => {
-    loadHabits();
-    loadProgress();
-    loadGroups();
-    loadAllUsers();
-    // load friends
-    (async () => {
-      try {
-        const f = await fetchFriends();
-        setFriends(f || []);
-      } catch (err) {
-        console.error('Failed to fetch friends:', err);
-        setFriends([]);
-      }
-    })();
-  }, [loadHabits]);
+    let isMounted = true;
 
-  // Listen for habit update socket events to refresh locally (without re-broadcast)
+    const loadAllData = async () => {
+      if (!isMounted || dataLoaded) return;
+      
+      try {
+        setHabitLoading(true);
+        // Load all data in parallel to reduce API calls
+        const [habitsResult, progressResult, groupsResult, usersResult, friendsResult] = await Promise.allSettled([
+          fetchHabits(),
+          fetchProgressSummary(), 
+          fetchGroups(),
+          fetchAllUsersProgress(),
+          fetchFriends()
+        ]);
+
+        if (isMounted) {
+          // Handle habits
+          if (habitsResult.status === 'fulfilled') {
+            setHabits(habitsResult.value);
+          }
+          
+          // Handle progress
+          if (progressResult.status === 'fulfilled') {
+            setProgressSummary(progressResult.value);
+          }
+          
+          // Handle groups
+          if (groupsResult.status === 'fulfilled') {
+            setGroups(groupsResult.value);
+          }
+          
+          // Handle users
+          if (usersResult.status === 'fulfilled') {
+            setAllUsersProgress(usersResult.value);
+          }
+          
+          // Handle friends
+          if (friendsResult.status === 'fulfilled') {
+            setFriends(friendsResult.value || []);
+          } else {
+            setFriends([]);
+          }
+          
+          setDataLoaded(true);
+          setHabitLoading(false);
+        }
+      } catch (error) {
+        console.error('Failed to load initial data:', error);
+        if (isMounted) {
+          setHabitLoading(false);
+        }
+      }
+    };
+
+    loadAllData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Listen for habit update socket events and patch locally for instant UI
   useEffect(() => {
-  const handler = () => {
-      // For granular updates we could patch state; simpler: full refresh
-      loadHabits(true);
-      loadProgress();
+    const handler = async (e) => {
+      const payload = e?.detail || {};
+      const { type, habit, habitId } = payload;
+      // Diagnostic log
+  try { console.debug('[habitUpdated event]', payload); } catch (_e) { /* debug log failed */ }
+      try {
+        if (type === 'habitCreated' && habit) {
+          setHabits(prev => prev.some(h => h._id === habit._id) ? prev : [habit, ...prev]);
+          // Verify fresh habit after short delay in case server attaches computed fields
+          setTimeout(async () => { try { const fresh = await fetchHabit(habit._id); setHabits(prev => prev.map(h=> h._id===fresh._id? fresh : h)); } catch (_e) { /* ignore verify error */ } }, 800);
+        } else if (type === 'habitUpdated' && habit) {
+          setHabits(prev => prev.map(h => h._id === habit._id ? habit : h));
+          setTimeout(async () => { try { const fresh = await fetchHabit(habit._id); setHabits(prev => prev.map(h=> h._id===fresh._id? fresh : h)); } catch (_e) { /* ignore verify error */ } }, 800);
+        } else if (type === 'habitArchived' && habitId) {
+          setHabits(prev => prev.filter(h => h._id !== habitId));
+        } else if (type === 'habitRestored' && habit) {
+          setHabits(prev => prev.some(h => h._id === habit._id) ? prev : [habit, ...prev]);
+        } else {
+          // Fallback: if payload shape unexpected, perform minimal fetch
+          const fresh = await fetchHabits();
+          setHabits(fresh);
+        }
+        // Refresh progress summary in background (non-blocking)
+        fetchProgressSummary().then(ps => setProgressSummary(ps)).catch(()=>{});
+      } catch (err) {
+        console.error('Socket habit patch error:', err);
+      }
     };
     window.addEventListener('habitUpdated', handler);
     return () => window.removeEventListener('habitUpdated', handler);
-  }, [loadHabits]);
+  }, []);
 
   const refreshFriends = async () => {
     try {

@@ -14,6 +14,63 @@ Habit Tracker ek web app hai jisse users apni habits track kar sakte hain, progr
 - Privacy settings
 - Notifications
 
+## Habit Creation & Tracking Details
+
+When you click the "Add Habit" button (Home -> authenticated view), you can configure:
+
+Field | Description | Notes
+----- | ----------- | -----
+Title | Habit name | Required (3–60 chars)
+Description | Additional context | Optional (<=300 chars)
+Frequency | `daily` / `weekly` / `monthly` | Drives tracker layout
+Time | Optional reminder time (HH:MM 24h) | Stored as `reminderTime`
+Start Date | First date habit is active | Optional; if omitted uses creation date
+End Date | Last active date (inclusive) | Optional; must be >= Start Date
+Weekly Days | Days of week (0=Sun..6=Sat) | Required only for weekly frequency (UI selects default weekdays in quick manager)
+Target Count / Duration | Optional enrichment metrics | Not enforced yet (display / future analytics)
+
+### Tracking Table Behavior
+Frequency | Rendering | Completion Rule
+--------- | --------- | ---------------
+Daily | One cell per day within active range up to today | Toggle today only (by default)
+Weekly | Grid of weeks; scheduled days are interactive buttons | Only scheduled weekdays count
+Monthly | Mini month cards; days colored by status | Monthly streak counts months with >=1 completion
+
+### Date Range Handling
+- If `startDate` provided, days before it are not rendered.
+- If `endDate` provided, days after it are not rendered.
+- Future dates beyond today are visually present (some views) but disabled.
+
+### Completion States
+- `completed`: green
+- `skipped`: muted/gray
+- `incomplete`: default (no log)
+
+### API Fields (Backend Habit Schema Additions)
+```
+startDate: YYYY-MM-DD string (optional)
+endDate:   YYYY-MM-DD string (optional)
+reminderTime: HH:MM 24h string (optional)
+frequencyType: 'daily' | 'weekly' | 'monthly' | 'custom'
+daysOfWeek: [Number] (0-6) when weekly
+```
+
+Validation:
+- Weekly requires at least one `daysOfWeek` entry.
+- `endDate >= startDate` when both set.
+- Formats strictly validated; invalid input returns 400.
+
+### Logs / Completion Storage
+Per-day logs stored in `HabitLog` collection with `{ habit, user, date, status }`.
+Status transitions follow: `incomplete -> completed -> skipped -> incomplete`.
+Only today (or yesterday when grace mode enabled) can be toggled server-side.
+
+### Future Enhancements (Roadmap)
+- Reminder notifications using `reminderTime`.
+- Enforced target counts per period (e.g., 3 times/week) progress bars.
+- Calendar export / ICS generation.
+
+
 ## Tech Stack
 - Frontend: React, JavaScript, Tailwind CSS
 - Backend: Node.js, Express.js

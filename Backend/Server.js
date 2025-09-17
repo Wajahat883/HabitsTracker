@@ -110,10 +110,23 @@ connectDB()
     app.set('io', io);
     app.set('broadcastToUser', broadcastToUser);
 
-    const port = process.env.PORT || 5000;
-    server.listen(port, () => {
-      console.log(`🚀 Server + Socket.IO running at port : ${port}`);
-    });
+    // Auto port fallback logic
+    const basePort = parseInt(process.env.PORT, 10) || 5000;
+    const tryListen = (p, attempts = 0) => {
+      server.listen(p, () => {
+        console.log(`🚀 Server + Socket.IO running at port : ${p}`);
+      }).on('error', (err) => {
+        if (err.code === 'EADDRINUSE' && attempts < 5) {
+          const next = p + 1;
+            console.warn(`Port ${p} in use, trying ${next}...`);
+          setTimeout(() => tryListen(next, attempts + 1), 300);
+        } else {
+          console.error('Failed to bind server:', err);
+          process.exit(1);
+        }
+      });
+    };
+    tryListen(basePort);
   })
   .catch((err) => {
     console.log('❌ MONGO db connection failed', err);

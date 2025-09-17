@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../context/useAuth';
 import GoogleLoginButton from './GoogleLoginButton';
 import Loader from '../Common/Loader';
-import axios from 'axios';
+import api from "../../config/axios";
 import { useNavigate } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -61,6 +62,11 @@ const Signup = ({ onSuccess }) => {
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { authenticated } = useAuth();
+  if (authenticated) {
+    navigate('/home');
+    return null;
+  }
 
   const showToast = (message, type='success') => {
     setToast({ show: true, message, type });
@@ -80,17 +86,8 @@ const Signup = ({ onSuccess }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ username, email, password })
-      });
-      const json = await res.json().catch(()=>({}));
-      if (!res.ok) {
-        showToast(json.message || 'Signup failed', 'error');
-        return;
-      }
+      const response = await api.post('/auth/register', { username, email, password });
+      const json = response.data;
       showToast('Signup successful!', 'success');
       const payload = extractPayload(json);
       const profile = buildProfile(payload.user, email);
@@ -98,7 +95,8 @@ const Signup = ({ onSuccess }) => {
       await finalizeSignup(profile);
     } catch (err) {
       console.error(err);
-      showToast('Server error', 'error');
+      const errorMessage = err.response?.data?.message || err.message || 'Signup failed';
+      showToast(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -111,7 +109,7 @@ const Signup = ({ onSuccess }) => {
         showToast('Google auth failed', 'error');
         return;
       }
-      const { data: raw } = await axios.post(`${API_URL}/api/auth/google`, { token: credentialResponse.credential }, { withCredentials: true });
+      const { data: raw } = await api.post('/auth/google', { token: credentialResponse.credential });
       const payload = extractPayload(raw);
       const profile = buildProfile(payload.user);
       persistAuth({ profile, accessToken: payload.accessToken || payload.token, refreshToken: payload.refreshToken });

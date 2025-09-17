@@ -1,7 +1,8 @@
 import React, { useState } from "react";
+import { useAuth } from '../../context/useAuth';
 import GoogleLoginButton from "./GoogleLoginButton";
 import Loader from "../Common/Loader";
-import axios from "axios";
+import api from "../../config/axios";
 import { useNavigate } from "react-router-dom";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -61,6 +62,12 @@ const Login = ({ onSuccess }) => {
   const [streakPopup, setStreakPopup] = useState(false);
   const [userStreak, setUserStreak] = useState(0);
   const navigate = useNavigate();
+  const { authenticated } = useAuth();
+  if (authenticated) {
+    // Already logged in; avoid flashing login screen
+    navigate('/home');
+    return null;
+  }
 
   const showToast = (message, type='success') => {
     setToast({ show: true, message, type });
@@ -76,19 +83,10 @@ const Login = ({ onSuccess }) => {
     window.dispatchEvent(new CustomEvent('userLoggedIn', { detail: finalProfile }));
     // Dynamically fetch current streak (longest streak across habits) and fallback to 1 for first-time users
     try {
-      const res = await fetch(`${API_URL}/api/progress/summary?range=30d`, {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
-        credentials: 'include'
-      });
-      if (res.ok) {
-        const json = await res.json().catch(()=>({}));
-        const data = json.data || json; // ApiResponse wraps in data
-        const longest = (data && typeof data.longestStreak === 'number') ? data.longestStreak : 0;
-        setUserStreak(longest > 0 ? longest : 1); // default to 1 if no streak yet
-      } else {
-        setUserStreak(1);
-      }
+      const response = await api.get('/progress/summary?range=30d');
+      const data = response.data.data || response.data; // ApiResponse wraps in data
+      const longest = (data && typeof data.longestStreak === 'number') ? data.longestStreak : 0;
+      setUserStreak(longest > 0 ? longest : 1); // default to 1 if no streak yet
     } catch {
       setUserStreak(1);
     }
@@ -103,17 +101,8 @@ const Login = ({ onSuccess }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, password })
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        showToast(json.message || 'Login failed', 'error');
-        return;
-      }
+      const response = await api.post('/auth/login', { email, password });
+      const json = response.data;
       showToast('Login successful!', 'success');
       const payload = extractPayload(json);
       const profile = buildProfile(payload.user, email);
@@ -121,7 +110,8 @@ const Login = ({ onSuccess }) => {
       await finalizeLogin(profile);
     } catch (err) {
       console.error(err);
-      showToast('Server error', 'error');
+      const errorMessage = err.response?.data?.message || err.message || 'Login failed';
+      showToast(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -134,7 +124,7 @@ const Login = ({ onSuccess }) => {
         showToast('Google auth failed', 'error');
         return;
       }
-      const { data: raw } = await axios.post(`${API_URL}/api/auth/google`, { token: credentialResponse.credential }, { withCredentials: true });
+      const { data: raw } = await api.post('/auth/google', { token: credentialResponse.credential });
       const payload = extractPayload(raw);
       const profile = buildProfile(payload.user);
       persistAuth({ profile, accessToken: payload.accessToken || payload.token, refreshToken: payload.refreshToken });

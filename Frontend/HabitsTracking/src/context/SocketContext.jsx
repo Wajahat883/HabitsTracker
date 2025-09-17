@@ -1,16 +1,17 @@
-import React, { createContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
 // Export internal context separately for hook file to import
 const SocketContext = createContext(null);
 export default SocketContext;
 
-export const SocketProvider = ({ token, children }) => {
+export const SocketProvider = ({ children }) => {
   const socketRef = useRef(null);
   const [connected, setConnected] = useState(false);
   const [friendPresence, setFriendPresence] = useState({}); // { userId: { status, lastSeen } }
 
   useEffect(() => {
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     if (!token) return;
     // Avoid duplicate connections
     if (socketRef.current) {
@@ -79,14 +80,13 @@ export const SocketProvider = ({ token, children }) => {
     });
 
     return () => { socket.disconnect(); };
-  }, [token]);
+  }, []);
 
-  const emitHabitUpdate = (habitId, change) => {
-    if (!socketRef.current) return;
-    socketRef.current.emit('habit:updated', { habitId, change });
-  };
+  const emitHabitUpdate = useCallback((habitId, change) => {
+    if (socketRef.current) socketRef.current.emit('habit:updated', { habitId, change });
+  }, []);
 
-  const value = { socket: socketRef.current, connected, friendPresence, emitHabitUpdate };
+  const value = useMemo(() => ({ socket: socketRef.current, connected, friendPresence, emitHabitUpdate }), [connected, friendPresence, emitHabitUpdate]);
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
 };
 
