@@ -35,6 +35,7 @@ export function CompletionProvider({ children }) {
     try { return JSON.parse(localStorage.getItem(LOCAL_KEY)) || {}; } catch { return {}; }
   });
   const [loadingHabits, setLoadingHabits] = useState({}); // habitId -> bool
+  const [currentDay, setCurrentDay] = useState(todayISO());
 
   // Persist cache
   useEffect(()=> { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(cache)); } catch { /* ignore persist errors */ } }, [cache]);
@@ -120,11 +121,64 @@ export function CompletionProvider({ children }) {
   }, [cache]);
 
   const value = useMemo(() => ({ ensureLoaded, getStatus, toggleStatus, getStreak, getStreakTolerance, getTotals, removeHabit, logsByHabit }), [ensureLoaded, getStatus, toggleStatus, getStreak, getStreakTolerance, getTotals, removeHabit, logsByHabit]);
-  return <CompletionContext.Provider value={value}>{children}</CompletionContext.Provider>;
+  // Midnight rollover detection (local)
+  useEffect(() => {
+    let rafId; let timeoutId;
+    function schedule() {
+      const now = new Date();
+      const next = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0,0,2); // 2s after midnight
+      const ms = next.getTime() - now.getTime();
+      timeoutId = setTimeout(() => {
+        const newDay = todayISO();
+        if (newDay !== currentDay) {
+          setCurrentDay(newDay);
+          try { window.dispatchEvent(new CustomEvent('habitDayRollover', { detail: { day: newDay } })); } catch { /* ignore */ }
+          // Optionally prune very old entries (>60 days) to keep cache light
+          setCache(prev => {
+            const cutoff = (()=>{ const dt=new Date(); dt.setDate(dt.getDate()-90); return localDateStr(dt); })();
+            const clone = {...prev};
+            for (const hid of Object.keys(clone)) {
+              const map = clone[hid];
+              for (const d of Object.keys(map)) { if (d < cutoff) delete map[d]; }
+            }
+            return clone;
+          });
+        }
+        schedule();
+      }, ms);
+    }
+    schedule();
+    return () => { if (timeoutId) clearTimeout(timeoutId); if (rafId) cancelAnimationFrame(rafId); };
+  }, [currentDay]);
+  // Dev/testing: allow manual simulation of advancing days
+  const simulateDayAdvance = React.useCallback((delta = 1) => {
+    if (typeof delta !== 'number' || !Number.isFinite(delta)) delta = 1;
+    setCurrentDay(prev => {
+      const [y,m,d] = prev.split('-').map(Number);
+      const dt = new Date(y, m-1, d);
+      dt.setDate(dt.getDate() + delta);
+      return localDateStr(dt);
+    });
+  }, []);
+
+  useEffect(() => {
+    const isProd = (import.meta && import.meta.env && import.meta.env.MODE === 'production');
+    if (!isProd) {
+      window.__simulateHabitDayAdvance = simulateDayAdvance;
+    }
+    return () => {
+  if (window.__simulateHabitDayAdvance === simulateDayAdvance) delete window.__simulateHabitDayAdvance;
+    };
+  }, [simulateDayAdvance]);
+
+  const extendedValue = useMemo(() => ({ ...value, currentDay, simulateDayAdvance }), [value, currentDay, simulateDayAdvance]);
+  return <CompletionContext.Provider value={extendedValue}>{children}</CompletionContext.Provider>;
 }
 
 // Hook to use completion context
 // Exported in a separate file would be better for fast refresh, but keeping here for simplicity
+// Hook co-located intentionally; disable fast-refresh lint warning for mixed exports
+// eslint-disable-next-line react-refresh/only-export-components
 export function useCompletion() {
   const ctx = useContext(CompletionContext);
   if (!ctx) throw new Error('useCompletion must be used within CompletionProvider');

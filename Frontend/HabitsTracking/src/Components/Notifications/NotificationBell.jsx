@@ -39,9 +39,10 @@ export default function NotificationBell() {
     try {
       setLoading(true);
       const data = await getNotifications();
-      setNotifications(data);
+      setNotifications(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to load notifications:', error);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -49,11 +50,10 @@ export default function NotificationBell() {
 
   const loadUnreadCount = async () => {
     try {
-      const data = await getUnreadCount();
-      setUnreadCount(data.count);
-  } catch {
-      // Silent degrade when backend temporarily unreachable
-      // console.warn('Unread count fetch failed (degraded mode).');
+      const count = await getUnreadCount();
+      if (typeof count === 'number' && !Number.isNaN(count)) setUnreadCount(count);
+    } catch {
+      // degrade silently
     }
   };
 
@@ -187,7 +187,7 @@ export default function NotificationBell() {
           <div className="max-h-80 overflow-y-auto">
             {loading ? (
               <div className="p-4 text-center text-slate-400">Loading...</div>
-            ) : notifications.length === 0 ? (
+            ) : !Array.isArray(notifications) || notifications.length === 0 ? (
               <div className="p-8 text-center text-slate-400">
                 <FaBell className="mx-auto mb-2 text-2xl" />
                 <p>No notifications yet</p>

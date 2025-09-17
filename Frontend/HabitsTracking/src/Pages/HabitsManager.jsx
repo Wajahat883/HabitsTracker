@@ -64,7 +64,7 @@ const HabitsManager = () => {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   
-  const blankForm = { title: '', description: '', reminderTime: '', frequencyType: 'daily', startDate: '', endDate: '', durationMinutes: '', targetCount: '', customConfig: '' };
+  const blankForm = { title: '', description: '', reminderTime: '', frequencyType: 'daily', startDate: '', endDate: '', durationMinutes: '', targetCount: '', customConfig: '', icon: '', timesPerPeriod: 1 };
   const [form, setForm] = useState(blankForm);
   
   const { habits, setHabits, updateHabitLocal, deleteHabitLocal, setSelectedHabit, habitLoading, progressSummary } = useHabitContext();
@@ -75,7 +75,17 @@ const HabitsManager = () => {
     if (!form.title.trim()) return;
     setSaving(true);
     try {
-  const payload = { title:form.title.trim(), description:form.description.trim(), frequencyType:form.frequencyType, reminderTime:form.reminderTime||undefined, startDate:form.startDate||undefined, endDate:form.endDate||undefined, daysOfWeek: form.frequencyType==='weekly'? [1,2,3,4,5]: undefined, timesPerPeriod:1 };
+  const payload = { 
+    title:form.title.trim(), 
+    description:form.description.trim(), 
+    frequencyType:form.frequencyType, 
+    reminderTime:form.reminderTime||undefined, 
+    startDate:form.startDate||undefined, 
+    endDate:form.endDate||undefined, 
+    daysOfWeek: form.frequencyType==='weekly'? [1,2,3,4,5]: undefined, 
+    timesPerPeriod: Number(form.timesPerPeriod)||1,
+    icon: form.icon || undefined
+  };
       if(editing){ 
         const updated = await updateHabit(editing._id, payload); 
         updateHabitLocal(updated); 
@@ -96,7 +106,7 @@ const HabitsManager = () => {
 
   const startEdit = (habit)=>{
     setEditing(habit);
-  setForm({ title:habit.title||'', description:habit.description||'', reminderTime:habit.reminderTime||'', frequencyType:habit.frequencyType||'daily', startDate:habit.startDate?habit.startDate.substring(0,10):'', endDate:habit.endDate?habit.endDate.substring(0,10):'', durationMinutes:habit.durationMinutes||'', targetCount:habit.targetCount||'', customConfig: habit.customConfig? JSON.stringify(habit.customConfig,null,2):'' });
+  setForm({ title:habit.title||'', description:habit.description||'', reminderTime:habit.reminderTime||'', frequencyType:habit.frequencyType||'daily', startDate:habit.startDate?habit.startDate.substring(0,10):'', endDate:habit.endDate?habit.endDate.substring(0,10):'', durationMinutes:habit.durationMinutes||'', targetCount:habit.targetCount||'', customConfig: habit.customConfig? JSON.stringify(habit.customConfig,null,2):'', icon: habit.icon || '', timesPerPeriod: habit.timesPerPeriod || 1 });
     setShowModal(true);
   };
 
@@ -178,7 +188,13 @@ const HabitsManager = () => {
 
   const iconMap = { FaTint:<FaTint className="text-blue-400 text-2xl"/>, FaBook:<FaBook className="text-purple-400 text-2xl"/>, FaRunning:<FaRunning className="text-pink-400 text-2xl"/>, FaBed:<FaBed className="text-indigo-400 text-2xl"/>, FaBrain:<FaBrain className="text-cyan-400 text-2xl"/>, FaDumbbell:<FaDumbbell className="text-emerald-400 text-2xl"/>, FaAppleAlt:<FaAppleAlt className="text-red-400 text-2xl"/>, FaLeaf:<FaLeaf className="text-green-400 text-2xl"/> };
   const pickIcon = (title='', override) => {
-    if (override && iconMap[override]) return iconMap[override];
+    if (override) {
+      if (iconMap[override]) return iconMap[override];
+      // treat override as emoji if not a known key
+      if (/\p{Emoji}/u.test(override) || override.length <= 4) {
+        return <span className="text-2xl select-none" aria-hidden="true">{override}</span>;
+      }
+    }
     const t = title.toLowerCase();
     if (/water|drink/.test(t)) return <FaTint className="text-blue-400 text-2xl"/>;
     if (/read|book/.test(t)) return <FaBook className="text-purple-400 text-2xl"/>;
@@ -192,11 +208,22 @@ const HabitsManager = () => {
   };
 
   const computeProgress = (habit) => {
-    // Simplified: number of completed dates in generated window / total dates
     const dates = generateTrackingDates(habit).filter(d => isDateInRange(d, habit.startDate, habit.endDate));
-    let completed = 0;
-    for (const d of dates) if (isCompleted(habit._id, d)) completed++;
-    return { completed, total: dates.length, percent: dates.length ? (completed / dates.length) * 100 : 0 };
+    const target = Number(habit.timesPerPeriod) || dates.length || 1;
+    // Determine period scope based on frequencyType
+    let completedUnits = 0;
+    if (habit.frequencyType === 'daily') {
+      const today = new Date().toISOString().split('T')[0];
+      completedUnits = isCompleted(habit._id, today) ? 1 : 0;
+    } else {
+      for (const d of dates) if (isCompleted(habit._id, d)) completedUnits++;
+    }
+    const percent = Math.min(100, target ? (completedUnits / target) * 100 : 0);
+    return { completed: completedUnits, target, rawTotal: dates.length, percent };
+  };
+
+  const formatHumanDate = (iso) => {
+    try { const dt = new Date(iso + 'T00:00:00'); return dt.toLocaleDateString(undefined, { month:'long', day:'numeric' }); } catch { return iso; }
   };
 
   return (
@@ -221,7 +248,7 @@ const HabitsManager = () => {
             const habitKey = habit._id || habit.id || habit.tempId || `h-${idx}`;
             const trackingDates = generateTrackingDates(habit);
             const validDates = trackingDates.filter(date => isDateInRange(date, habit.startDate, habit.endDate));
-            const { completed, total, percent } = computeProgress(habit);
+            const { completed, target, percent } = computeProgress(habit);
             const today = new Date().toISOString().split('T')[0];
             const weekDates = (()=>{ // last 7 days including today
               const arr=[]; const base = new Date();
@@ -252,12 +279,12 @@ const HabitsManager = () => {
                     </div>
                     {/* Progress */}
                     <div className="mt-4">
-                      <div className="h-2 w-full rounded-full bg-slate-800 overflow-hidden relative">
+                      <div className="h-2 w-full rounded-full bg-slate-800 overflow-hidden relative" role="progressbar" aria-valuenow={completed} aria-valuemin={0} aria-valuemax={target} aria-label={`Progress: ${completed} out of ${target}${habit.frequencyType!=='daily'? ' this period' : ''}.`}>
                         <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.05)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.05)_50%,rgba(255,255,255,0.05)_75%,transparent_75%,transparent)] bg-[length:12px_12px] opacity-20" />
                         <div className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-fuchsia-500 transition-[width] duration-700 ease-out will-change-[width]" style={{width: `${percent.toFixed(0)}%`}} />
                       </div>
-                      <div className="mt-2 flex items-center gap-3 text-[11px] font-medium text-slate-400">
-                        <span className="px-2 py-1 rounded-md bg-slate-800/70 border border-slate-700 text-slate-300">{completed}/{total}</span>
+                      <div className="mt-2 flex items-center gap-3 text-[11px] font-medium text-slate-400" aria-hidden="false">
+                        <span className="px-2 py-1 rounded-md bg-slate-800/70 border border-slate-700 text-slate-300" title={`Target ${target}`}>{completed}/{target}</span>
                         <div className="flex gap-1 rounded-xl overflow-hidden border border-slate-700 bg-slate-800">
                           {['daily','weekly','monthly'].map(ft => (
                             <button key={ft} type="button" onClick={()=>changeFrequency(habit, ft)} className={`px-2.5 py-1 text-[10px] font-semibold tracking-wide transition-colors ${habit.frequencyType===ft ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-blue-700/40'}`}>{ft[0].toUpperCase()+ft.slice(1)}</button>
@@ -267,8 +294,16 @@ const HabitsManager = () => {
                       {/* Mini Weekly Heatmap */}
                       <div className="mt-3 flex gap-1">
                         {weekDates.map(d => {
-                          const done = isCompleted(habit._id, d);
-                          return <div key={d} className={`w-5 h-3 rounded-sm ${done ? 'bg-blue-500' : 'bg-slate-700'} ${d===today ? 'ring-1 ring-blue-400 ring-offset-1 ring-offset-slate-900' : ''}`}></div>;
+                          const status = getStatus(habit._id, d);
+                          const done = status === 'completed';
+                          const skipped = status === 'skipped';
+                          const statusLabel = done ? 'Completed' : skipped ? 'Skipped' : 'Incomplete';
+                          return <div key={d} 
+                            className={`w-5 h-3 rounded-sm ${done ? 'bg-blue-500' : skipped ? 'bg-amber-500' : 'bg-slate-700'} ${d===today ? 'ring-1 ring-blue-400 ring-offset-1 ring-offset-slate-900' : ''}`}
+                            title={`${formatHumanDate(d)} • ${statusLabel}`}
+                            aria-label={`${formatHumanDate(d)}, ${statusLabel}`}
+                            role="img"
+                          ></div>;
                         })}
                       </div>
                     </div>
@@ -358,6 +393,36 @@ const HabitsManager = () => {
                       value={form.reminderTime}
                       onChange={(e) => setForm(p=>({...p, reminderTime: e.target.value}))}
                       className="w-full p-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      Target (times per period)
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={form.timesPerPeriod}
+                      onChange={(e)=> setForm(p=>({...p, timesPerPeriod: e.target.value}))}
+                      className="w-full p-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white"
+                      placeholder="e.g. 4"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      Custom Emoji Icon
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={4}
+                      value={form.icon}
+                      onChange={(e)=> setForm(p=>({...p, icon: e.target.value}))}
+                      className="w-full p-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white"
+                      placeholder="e.g. 💧"
+                      aria-label="Custom emoji icon"
                     />
                   </div>
                 </div>

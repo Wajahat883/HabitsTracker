@@ -155,15 +155,15 @@ export const HabitProvider = ({ children }) => {
       const payload = e?.detail || {};
       const { type, habit, habitId } = payload;
       // Diagnostic log
-  try { console.debug('[habitUpdated event]', payload); } catch (_e) { /* debug log failed */ }
+  try { console.debug('[habitUpdated event]', payload); } catch { /* debug log failed */ }
       try {
         if (type === 'habitCreated' && habit) {
           setHabits(prev => prev.some(h => h._id === habit._id) ? prev : [habit, ...prev]);
           // Verify fresh habit after short delay in case server attaches computed fields
-          setTimeout(async () => { try { const fresh = await fetchHabit(habit._id); setHabits(prev => prev.map(h=> h._id===fresh._id? fresh : h)); } catch (_e) { /* ignore verify error */ } }, 800);
+          setTimeout(async () => { try { const fresh = await fetchHabit(habit._id); setHabits(prev => prev.map(h=> h._id===fresh._id? fresh : h)); } catch { /* ignore verify error */ } }, 800);
         } else if (type === 'habitUpdated' && habit) {
           setHabits(prev => prev.map(h => h._id === habit._id ? habit : h));
-          setTimeout(async () => { try { const fresh = await fetchHabit(habit._id); setHabits(prev => prev.map(h=> h._id===fresh._id? fresh : h)); } catch (_e) { /* ignore verify error */ } }, 800);
+          setTimeout(async () => { try { const fresh = await fetchHabit(habit._id); setHabits(prev => prev.map(h=> h._id===fresh._id? fresh : h)); } catch { /* ignore verify error */ } }, 800);
         } else if (type === 'habitArchived' && habitId) {
           setHabits(prev => prev.filter(h => h._id !== habitId));
         } else if (type === 'habitRestored' && habit) {
@@ -182,6 +182,17 @@ export const HabitProvider = ({ children }) => {
     window.addEventListener('habitUpdated', handler);
     return () => window.removeEventListener('habitUpdated', handler);
   }, []);
+
+  // Day rollover sync: when CompletionContext day advances, refresh progress+habits lightweight
+  useEffect(() => {
+    function onDayRollover() {
+      fetchProgressSummary().then(ps => setProgressSummary(ps)).catch(()=>{});
+      // Light habit refresh (no emit) to capture any server-side day-based computed fields
+      loadHabits(true).catch(()=>{});
+    }
+    window.addEventListener('habitDayRollover', onDayRollover);
+    return () => window.removeEventListener('habitDayRollover', onDayRollover);
+  }, [loadHabits]);
 
   const refreshFriends = async () => {
     try {

@@ -22,7 +22,7 @@ const NAV_ITEMS = [
 
 export default function AppShell() {
   const { theme, toggleTheme } = useTheme();
-  const { authenticated: isAuthenticated, loading } = useAuth();
+  const { authenticated: isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
