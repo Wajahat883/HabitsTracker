@@ -46,14 +46,18 @@ export function CompletionProvider({ children }) {
     try {
       const range = { from: addDays(todayISO(), -30), to: todayISO() };
       const logs = await fetchLogs(habitId, range);
-      const map = {}; logs.forEach(l => { map[l.date] = l.status; });
+      const map = {}; logs.forEach(l => { map[l.date] = { status: l.status, locked: l.locked || false }; });
       setCache(prev => ({ ...prev, [habitId]: map }));
     } catch { /* silent */ }
     finally { setLoadingHabits(l => ({ ...l, [habitId]: false })); }
   }, [cache, loadingHabits]);
 
   const getStatus = useCallback((habitId, isoDate) => {
-    return cache[habitId]?.[isoDate] || 'incomplete';
+    return cache[habitId]?.[isoDate]?.status || 'incomplete';
+  }, [cache]);
+
+  const isLocked = useCallback((habitId, isoDate) => {
+    return cache[habitId]?.[isoDate]?.locked || false;
   }, [cache]);
 
   const toggleStatus = useCallback(async (habitId, isoDate) => {
@@ -62,15 +66,47 @@ export function CompletionProvider({ children }) {
     await ensureLoaded(habitId);
     const current = getStatus(habitId, isoDate);
     const next = current === 'incomplete' ? 'completed' : current === 'completed' ? 'skipped' : 'incomplete';
-    setCache(prev => ({ ...prev, [habitId]: { ...(prev[habitId]||{}), [isoDate]: next } }));
-    try { await saveLog(habitId, { date: isoDate, status: next }); } catch { /* keep optimistic */ }
+    setCache(prev => ({ ...prev, [habitId]: { ...(prev[habitId]||{}), [isoDate]: { status: next, locked: false } } }));
+    try {
+      await saveLog(habitId, { date: isoDate, status: next });
+      // after successful save, refresh yesterday+today to ensure streaks are accurate
+      const today = todayISO(); const y = addDays(today, -1);
+      try {
+        const res = await fetchLogs(habitId, { from: y, to: today });
+        const map = res && res.reduce ? res.reduce((acc, l) => { acc[l.date] = { status: l.status, locked: l.locked || false }; return acc; }, {}) : {};
+        setCache(prev => ({ ...prev, [habitId]: { ...(prev[habitId] || {}), ...map } }));
+      } catch { /* swallow */ }
+    } catch { /* keep optimistic */ }
     return next;
   }, [ensureLoaded, getStatus]);
+
+  // After saving today's log, refresh yesterday+today logs to keep streaks accurate
+  useEffect(() => {
+    const onHabitUpdated = async (e) => {
+      try {
+        const data = e.detail || e;
+        if (data && (data.type === 'logUpdated' || data.type === 'dayLocked')) {
+          const habitId = data.habitId;
+          if (!habitId) return;
+          // Fetch yesterday and today logs to ensure cache consistency
+          const today = todayISO();
+          const y = addDays(today, -1);
+            try {
+              const res = await fetchLogs(habitId, { from: y, to: today });
+              const map = res && res.reduce ? res.reduce((acc, l) => { acc[l.date] = { status: l.status, locked: l.locked || false }; return acc; }, {}) : {};
+              setCache(prev => ({ ...prev, [habitId]: { ...(prev[habitId] || {}), ...map } }));
+            } catch { /* swallow */ }
+        }
+          } catch { /* ignore */ }
+    };
+    window.addEventListener('habitUpdated', onHabitUpdated);
+    return () => window.removeEventListener('habitUpdated', onHabitUpdated);
+  }, []);
 
   const getStreak = useCallback((habitId) => {
     const map = cache[habitId]; if (!map) return 0;
     let streak = 0; let day = todayISO();
-    while (map[day] === 'completed') { streak++; day = addDays(day, -1); }
+    while (map[day]?.status === 'completed') { streak++; day = addDays(day, -1); }
     return streak;
   }, [cache]);
 
@@ -82,7 +118,7 @@ export function CompletionProvider({ children }) {
     let streak = 0;
     let misses = 0;
     while (true) {
-      const status = map[day];
+      const status = map[day]?.status;
       if (status === 'completed') {
         streak++;
       } else {
@@ -98,7 +134,7 @@ export function CompletionProvider({ children }) {
 
   const getTotals = useCallback((habitId) => {
     const map = cache[habitId]; if (!map) return { completed:0, skipped:0 };
-    let completed=0, skipped=0; Object.values(map).forEach(s => { if (s==='completed') completed++; else if (s==='skipped') skipped++; });
+    let completed=0, skipped=0; Object.values(map).forEach(entry => { if (entry?.status==='completed') completed++; else if (entry?.status==='skipped') skipped++; });
     return { completed, skipped };
   }, [cache]);
 
@@ -115,12 +151,12 @@ export function CompletionProvider({ children }) {
   const logsByHabit = useMemo(() => {
     const out = {};
     for (const hid of Object.keys(cache)) {
-      out[hid] = Object.entries(cache[hid]).map(([date,status]) => ({ date, status }));
+      out[hid] = Object.entries(cache[hid]).map(([date,entry]) => ({ date, status: entry?.status, locked: entry?.locked }));
     }
     return out;
   }, [cache]);
 
-  const value = useMemo(() => ({ ensureLoaded, getStatus, toggleStatus, getStreak, getStreakTolerance, getTotals, removeHabit, logsByHabit }), [ensureLoaded, getStatus, toggleStatus, getStreak, getStreakTolerance, getTotals, removeHabit, logsByHabit]);
+  const value = useMemo(() => ({ ensureLoaded, getStatus, isLocked, toggleStatus, getStreak, getStreakTolerance, getTotals, removeHabit, logsByHabit }), [ensureLoaded, getStatus, isLocked, toggleStatus, getStreak, getStreakTolerance, getTotals, removeHabit, logsByHabit]);
   // Midnight rollover detection (local)
   useEffect(() => {
     let rafId; let timeoutId;

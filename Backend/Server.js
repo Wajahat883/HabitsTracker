@@ -110,17 +110,55 @@ connectDB()
     app.set('io', io);
     app.set('broadcastToUser', broadcastToUser);
 
+    // Daily rollover: lock yesterday's logs at UTC midnight and emit habit:updated events
+    import('./src/Models/HabitLog.js').then(({ default: HabitLog }) => {
+      const lockYesterday = async () => {
+        try {
+          const now = new Date();
+          const yesterday = new Date(now);
+          yesterday.setUTCDate(now.getUTCDate() - 1);
+          const yStr = yesterday.toISOString().slice(0, 10);
+          // mark all logs dated yesterday as locked
+          const result = await HabitLog.updateMany({ date: yStr, locked: false }, { $set: { locked: true } });
+          if (result.modifiedCount && result.modifiedCount > 0) {
+            console.log(`Locked ${result.modifiedCount} logs for date ${yStr}`);
+            // notify affected users to refresh streaks / progress
+            const affected = await HabitLog.find({ date: yStr }).distinct('user');
+            for (const uid of affected) {
+              io.to(`user:${uid}`).emit('habit:updated', { type: 'dayLocked', date: yStr });
+            }
+          }
+        } catch (e) { console.error('Daily rollover failed', e); }
+      };
+
+      // Schedule first run at next UTC midnight + 2s to allow DB writes to complete
+      const scheduleNext = () => {
+        const now = new Date();
+        const nextUTC = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 2);
+        const delay = nextUTC.getTime() - now.getTime();
+        console.log(`Next rollover scheduled in ${Math.round(delay / 1000)} seconds at ${nextUTC.toISOString()}`);
+        setTimeout(async () => { await lockYesterday(); scheduleNext(); }, delay);
+      };
+      scheduleNext();
+    }).catch(()=>{});
+
     // Auto port fallback logic
     const basePort = parseInt(process.env.PORT, 10) || 5000;
+    let serverStarted = false;
     const tryListen = (p, attempts = 0) => {
-      server.listen(p, () => {
+      if (serverStarted) return; // Prevent multiple listen attempts
+      
+      const serverInstance = server.listen(p, () => {
+        serverStarted = true;
         console.log(`🚀 Server + Socket.IO running at port : ${p}`);
-      }).on('error', (err) => {
-        if (err.code === 'EADDRINUSE' && attempts < 5) {
+      });
+      
+      serverInstance.on('error', (err) => {
+        if (err.code === 'EADDRINUSE' && attempts < 5 && !serverStarted) {
           const next = p + 1;
-            console.warn(`Port ${p} in use, trying ${next}...`);
+          console.warn(`Port ${p} in use, trying ${next}...`);
           setTimeout(() => tryListen(next, attempts + 1), 300);
-        } else {
+        } else if (!serverStarted) {
           console.error('Failed to bind server:', err);
           process.exit(1);
         }

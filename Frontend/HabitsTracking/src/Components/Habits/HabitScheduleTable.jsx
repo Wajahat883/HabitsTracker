@@ -34,7 +34,7 @@ function monthsBetween(start, end) {
 }
 
 export default function HabitScheduleTable({ habit, logsMap }) {
-  const { toggleStatus } = useCompletion();
+  const { toggleStatus, isLocked } = useCompletion();
   const today = useMemo(() => new Date(), []);
   const start = useMemo(() => (habit.startDate ? parseDate(habit.startDate) : new Date(habit.createdAt)), [habit.startDate, habit.createdAt]);
   const end = useMemo(() => {
@@ -64,6 +64,10 @@ export default function HabitScheduleTable({ habit, logsMap }) {
     return entry ? entry.status : null;
   };
 
+  const getIsLocked = (dStr) => {
+    return isLocked(habit._id, dStr);
+  };
+
   const handleToggle = (dateStr) => {
     toggleStatus(habit._id, dateStr);
   };
@@ -76,13 +80,19 @@ export default function HabitScheduleTable({ habit, logsMap }) {
         <div className="grid gap-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(36px,1fr))' }}>
           {dailyCells.map(c => {
             const status = getStatus(c.date);
+            const locked = getIsLocked(c.date);
             const isToday = c.date === dateKey(today);
+
             return (
-              <button key={c.date} onClick={() => handleToggle(c.date)} disabled={c.date > dateKey(today)}
-                className={`h-9 text-xs rounded flex items-center justify-center border transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400 
+              <button key={c.date} onClick={() => handleToggle(c.date)} disabled={c.date > dateKey(today) || locked}
+                className={`h-9 text-xs rounded flex items-center justify-center border transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400 relative
                 ${status === 'completed' ? 'bg-green-500 border-green-400 text-white' : status === 'skipped' ? 'bg-slate-600 border-slate-500 text-slate-300' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}
-                ${isToday ? 'ring-1 ring-blue-400' : ''}`}
-                title={c.date}>{c.date.slice(5)}</button>
+                ${isToday ? 'ring-1 ring-blue-400' : ''}
+                ${locked ? 'opacity-75 cursor-not-allowed' : ''}`}
+                title={locked ? `${c.date} (Locked)` : c.date}>
+                {c.date.slice(5)}
+                {locked && <span className="absolute top-0 right-0 text-[8px]">🔒</span>}
+              </button>
             );
           })}
         </div>
@@ -105,10 +115,14 @@ export default function HabitScheduleTable({ habit, logsMap }) {
                   return (
                     <td key={dStr} className={`p-0.5 text-center ${!inRange ? 'opacity-30' : ''}`}>
                       {scheduled && inRange ? (
-                        <button onClick={()=>handleToggle(dStr)} disabled={dStr > dateKey(today)}
-                          className={`w-8 h-8 rounded text-[10px] border flex items-center justify-center mx-auto transition-colors duration-150
-                          ${status === 'completed' ? 'bg-green-500 border-green-400 text-white' : status === 'skipped' ? 'bg-slate-600 border-slate-500 text-slate-300' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
-                          title={dStr}>{dStr.slice(5)}</button>
+                        <button onClick={()=>handleToggle(dStr)} disabled={dStr > dateKey(today) || getIsLocked(dStr)}
+                          className={`w-8 h-8 rounded text-[10px] border flex items-center justify-center mx-auto transition-colors duration-150 relative
+                          ${status === 'completed' ? 'bg-green-500 border-green-400 text-white' : status === 'skipped' ? 'bg-slate-600 border-slate-500 text-slate-300' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}
+                          ${getIsLocked(dStr) ? 'opacity-75 cursor-not-allowed' : ''}`}
+                          title={getIsLocked(dStr) ? `${dStr} (Locked)` : dStr}>
+                          {dStr.slice(5)}
+                          {getIsLocked(dStr) && <span className="absolute top-0 right-0 text-[6px]">🔒</span>}
+                        </button>
                       ) : (
                         <div className="w-8 h-8 mx-auto rounded bg-slate-900/30 border border-slate-800" />
                       )}
@@ -143,9 +157,12 @@ export default function HabitScheduleTable({ habit, logsMap }) {
                     const dStr = dateKey(d);
                     const status = getStatus(dStr);
                     return (
-                      <button key={dStr} onClick={()=>handleToggle(dStr)} disabled={dStr > dateKey(today)}
-                        className={`h-5 rounded border transition-colors duration-150 ${status === 'completed' ? 'bg-green-500 border-green-500' : status === 'skipped' ? 'bg-slate-600 border-slate-600' : 'bg-slate-900 border-slate-700 hover:bg-slate-700'}`}
-                        title={dStr} />
+                      <button key={dStr} onClick={()=>handleToggle(dStr)} disabled={dStr > dateKey(today) || getIsLocked(dStr)}
+                        className={`h-5 rounded border transition-colors duration-150 relative ${status === 'completed' ? 'bg-green-500 border-green-500' : status === 'skipped' ? 'bg-slate-600 border-slate-600' : 'bg-slate-900 border-slate-700 hover:bg-slate-700'}
+                        ${getIsLocked(dStr) ? 'opacity-75 cursor-not-allowed' : ''}`}
+                        title={getIsLocked(dStr) ? `${dStr} (Locked)` : dStr}>
+                        {getIsLocked(dStr) && <span className="absolute inset-0 flex items-center justify-center text-[8px]">🔒</span>}
+                      </button>
                     );
                   })}
                 </div>

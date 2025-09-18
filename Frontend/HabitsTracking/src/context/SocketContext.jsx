@@ -13,13 +13,18 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-    if (!token) return;
+    if (!token) {
+      console.log('🔌 Socket.IO: No auth token found, connection skipped');
+      return;
+    }
     // Avoid duplicate connections
     if (socketRef.current) {
+      console.log('🔌 Socket.IO: Closing existing connection');
       socketRef.current.disconnect();
       socketRef.current = null;
     }
     const url = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || 'http://localhost:5000';
+    console.log(`🔌 Socket.IO: Attempting connection to ${url}`);
     const socket = io(url, {
       transports: ['websocket', 'polling'],
       auth: { token },
@@ -32,13 +37,20 @@ export const SocketProvider = ({ children }) => {
     });
     socketRef.current = socket;
 
-    socket.on('connect', () => setConnected(true));
+    socket.on('connect', () => {
+      console.log('✅ Socket.IO: Connected successfully');
+      setConnected(true);
+    });
     socket.on('disconnect', (reason) => {
+      console.log(`❌ Socket.IO: Disconnected - ${reason}`);
       setConnected(false);
       if (reason === 'io server disconnect') {
         // manual disconnect by server -> attempt reconnect
         socket.connect();
       }
+    });
+    socket.on('connect_error', (error) => {
+      console.error('❌ Socket.IO: Connection error:', error.message);
     });
     socket.io.on('reconnect_attempt', (attempt) => {
       // Could add UI indicator via custom event

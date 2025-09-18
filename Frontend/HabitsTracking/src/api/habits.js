@@ -50,3 +50,8 @@ export async function fetchBatchLogs(habitIds = [], { from, to }) {
   const response = await api.get(`/habits/logs/batch/all?habitIds=${habitIds.join(',')}&from=${from}&to=${to}`);
   return response.data || {};
 }
+
+export async function forceRollover() {
+  const response = await api.post('/habits/rollover/force');
+  return response.data;
+}

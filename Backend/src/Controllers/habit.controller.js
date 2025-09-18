@@ -273,13 +273,17 @@ export const createOrUpdateLog = async (req, res, next) => {
       const weekday = new Date(date + 'T00:00:00Z').getUTCDay();
       if (!habit.daysOfWeek.includes(weekday)) throw new ApiError(400, 'Date not in scheduled days for weekly habit');
     }
+    // If existing locked log, prevent modification
+    const existing = await HabitLog.findOne({ habit: habit._id, user: req.user.userId, date });
+    if (existing && existing.locked) throw new ApiError(400, 'Cannot modify a locked log (previous day)');
+
     const log = await HabitLog.findOneAndUpdate(
       { habit: habit._id, user: req.user.userId, date },
       { status, note },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
-  const io = req.app.get('io');
-  if (io) io.to(`user:${req.user.userId}`).emit('habit:updated', { type: 'logUpdated', habitId: habit._id, date, status, log });
+    const io = req.app.get('io');
+    if (io) io.to(`user:${req.user.userId}`).emit('habit:updated', { type: 'logUpdated', habitId: habit._id, date, status, log });
     return res.status(201).json(new ApiResponse(201, log, 'Log saved'));
   } catch (e) { next(e); }
 };
@@ -338,5 +342,44 @@ export const batchLogs = async (req, res, next) => {
       grouped[hid].push(l);
     }
     return res.json(new ApiResponse(200, grouped));
+  } catch (e) { next(e); }
+};
+
+// Force rollover endpoint for testing (protected by environment flag)
+export const forceRollover = async (req, res, next) => {
+  try {
+    // Check if force rollover is enabled
+    if (process.env.FORCE_ROLLOVER_ENABLED !== 'true') {
+      throw new ApiError(403, 'Force rollover is not enabled');
+    }
+
+    // Calculate yesterday's date in UTC
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setUTCDate(now.getUTCDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+    // Lock all logs from yesterday that aren't already locked
+    const result = await HabitLog.updateMany(
+      { date: yesterdayStr, locked: false },
+      { $set: { locked: true } }
+    );
+
+    // Emit socket events to affected users
+    const io = req.app.get('io');
+    if (io && result.modifiedCount > 0) {
+      const affectedUsers = await HabitLog.find({ date: yesterdayStr }).distinct('user');
+      for (const userId of affectedUsers) {
+        io.to(`user:${userId}`).emit('habit:updated', { 
+          type: 'dayLocked', 
+          date: yesterdayStr 
+        });
+      }
+    }
+
+    return res.json(new ApiResponse(200, { 
+      lockedCount: result.modifiedCount,
+      date: yesterdayStr 
+    }, 'Force rollover completed'));
   } catch (e) { next(e); }
 };

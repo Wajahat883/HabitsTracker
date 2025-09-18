@@ -121,6 +121,8 @@ const HabitsManager = () => {
     } 
   };
 
+
+
   const changeFrequency = async (habit, newType) => {
     if (habit.frequencyType === newType) return;
     const optimistic = { ...habit, frequencyType: newType };

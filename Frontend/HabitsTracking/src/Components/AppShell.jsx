@@ -6,6 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/useAuth';
 import UserProfileBadge from '../Components/Common/UserProfileBadge';
 import NotificationBell from '../Components/Notifications/NotificationBell';
+import SocialSidebar from '../Components/Friends/SocialSidebar';
 import Home from '../Pages/Home';
 import Dashboard from '../Pages/Dashboard';
 import image from '../assets/logo-habit-tracker.png';
@@ -146,6 +147,12 @@ export default function AppShell() {
                 ))}
               </ul>
             </nav>
+            
+            {/* Social Features Section */}
+            <div className="mb-6">
+              <SocialSidebar />
+            </div>
+            
             <div className="mt-auto text-xs text-muted opacity-60 px-2">Modern UI</div>
           </aside>
         </>
