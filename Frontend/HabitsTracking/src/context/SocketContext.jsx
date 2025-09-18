@@ -8,7 +8,8 @@ export default SocketContext;
 export const SocketProvider = ({ children }) => {
   const socketRef = useRef(null);
   const [connected, setConnected] = useState(false);
-  const [friendPresence, setFriendPresence] = useState({}); // { userId: { status, lastSeen } }
+  const [friendPresence, setFriendPresence] = useState({}); 
+  // { userId: { status, lastSeen } }
 
   useEffect(() => {
     const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
@@ -41,10 +42,12 @@ export const SocketProvider = ({ children }) => {
     });
     socket.io.on('reconnect_attempt', (attempt) => {
       // Could add UI indicator via custom event
-      window.dispatchEvent(new CustomEvent('socket:reconnectAttempt', { detail: { attempt } }));
+      window.dispatchEvent(new CustomEvent('socket:reconnectAttempt', 
+        { detail: { attempt } }));
     });
     socket.io.on('reconnect_error', (err) => {
-      window.dispatchEvent(new CustomEvent('socket:reconnectError', { detail: { message: err.message } }));
+      window.dispatchEvent(new CustomEvent('socket:reconnectError', 
+        { detail: { message: err.message } }));
     });
     socket.io.on('reconnect_failed', () => {
       window.dispatchEvent(new CustomEvent('socket:reconnectFailed'));
