@@ -128,15 +128,134 @@ a:hover {
 }
 
 
+/* Modern Scrollbar Styling */
 .app-scrollbar::-webkit-scrollbar {
-  @apply w-[8px] h-[8px];
+  width: 8px;
+  height: 8px;
 }
 .app-scrollbar::-webkit-scrollbar-track {
-  @apply bg-[#0F172B];
+  background: var(--color-bg-alt);
+  border-radius: 10px;
+  margin: 4px;
 }
- 
 .app-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-gray-500 rounded-[5px];
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.6), rgba(139, 92, 246, 0.6));
+  border-radius: 10px;
+  border: 2px solid var(--color-bg-alt);
+  transition: all 0.3s ease;
+}
+.app-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.8), rgba(139, 92, 246, 0.8));
+  transform: scale(1.1);
+}
+.app-scrollbar::-webkit-scrollbar-corner {
+  background: var(--color-bg-alt);
+}
+
+/* Modern Glassmorphism Effects */
+.glass-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+
+/* Modern Gradient Animations */
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+/* Modern Hover Effects */
+.hover-lift {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hover-lift:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Modern Pulse Animation */
+.pulse-modern {
+  animation: pulse-modern 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulse-modern {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Modern Loading Shimmer */
+.shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.1) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Modern Stagger Animation */
+.stagger-child {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: stagger-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.stagger-child:nth-child(1) { animation-delay: 0.1s; }
+.stagger-child:nth-child(2) { animation-delay: 0.2s; }
+.stagger-child:nth-child(3) { animation-delay: 0.3s; }
+.stagger-child:nth-child(4) { animation-delay: 0.4s; }
+@keyframes stagger-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Modern Floating Animation */
+.float {
+  animation: float 3s ease-in-out infinite;
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Modern Glow Effect */
+.glow {
+  position: relative;
+}
+.glow::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(45deg, #3b82f6, #8b5cf6, #ef4444, #f59e0b);
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+  filter: blur(10px);
+}
+.glow:hover::before {
+  opacity: 0.7;
+}
+
+/* Modern Card Reveal Animation */
+.reveal-card {
+  opacity: 0;
+  transform: scale(0.95) translateY(30px);
+  animation: reveal-card 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes reveal-card {
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 /* Prevent text selection & caret in interactive habit cells/buttons */
@@ -150,5 +269,34 @@ a:hover {
 
 button.habit-cell-btn:focus { outline: none; }
 button.habit-cell-btn:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+
+/* Enhanced Privacy Dropdown Styling */
+select[name="privacy"] {
+  background-image: none;
+  padding-right: 2.5rem;
+}
+
+select[name="privacy"]:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+select[name="privacy"] option {
+  background-color: var(--color-bg-alt);
+  color: var(--color-text);
+  padding: 12px 16px;
+  border: none;
+}
+
+select[name="privacy"] option:hover {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+select[name="privacy"] option:checked {
+  background-color: var(--color-primary);
+  color: white;
+  font-weight: 600;
+}
 
 /* === End Modern UI/UX Foundation === */

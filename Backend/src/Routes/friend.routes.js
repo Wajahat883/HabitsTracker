@@ -6,6 +6,7 @@ import { inviteFriend, acceptInvite, getFriendHabits, acceptInviteByLink } from 
 import {
     discoverUsers,
     sendFriendRequest,
+    getAllRequests,
     getReceivedRequests,
     getSentRequests,
     respondToFriendRequest,
@@ -25,6 +26,7 @@ router.use(authMiddleware);
 // Enhanced friend discovery and management
 router.get('/discover', discoverUsers);
 router.post('/request', sendFriendRequest);
+router.get('/requests', getAllRequests); // Combined endpoint for both sent and received
 router.get('/requests/received', getReceivedRequests);
 router.get('/requests/sent', getSentRequests);
 router.patch('/requests/:requestId', respondToFriendRequest);

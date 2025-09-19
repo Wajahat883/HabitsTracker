@@ -9,6 +9,7 @@ import { useHabitContext } from '../../context/useHabitContext';
 const defaultForm = {
   title: '',
   description: '',
+  privacy: 'private',
   frequencyType: 'daily',
   daysOfWeek: [],
   timesPerPeriod: 1,
@@ -99,6 +100,54 @@ export default function HabitForm({ onCreated }) {
         <textarea id="habit-desc" name="description" value={form.description} onChange={handleChange} rows={2}
           className="textarea w-full text-base" placeholder="Optional details..." />
       </div>
+
+      {/* Privacy Section */}
+      <div className="space-y-2">
+        <label className="block text-base font-medium" htmlFor="habit-privacy">Privacy</label>
+        <div className="relative">
+          <select 
+            id="habit-privacy" 
+            name="privacy" 
+            value={form.privacy} 
+            onChange={handleChange}
+            className="select w-full text-base appearance-none cursor-pointer pr-10"
+          >
+            <option value="private">🔒 Private (only you)</option>
+            <option value="friends">👥 Share with friends</option>
+            <option value="specific">👤 Share with specific friends</option>
+          </select>
+          
+          {/* Custom dropdown arrow */}
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+            <FaChevronDown className="w-4 h-4 text-slate-400" />
+          </div>
+        </div>
+        
+        {/* Description text based on selection */}
+        <div className="px-1">
+          <p className="text-xs text-slate-400 flex items-center gap-2">
+            {form.privacy === 'private' && (
+              <>
+                <span className="text-blue-400">🔒</span>
+                Only you can see this habit and track your progress
+              </>
+            )}
+            {form.privacy === 'friends' && (
+              <>
+                <span className="text-green-400">👥</span>
+                All your friends can see this habit and follow your progress
+              </>
+            )}
+            {form.privacy === 'specific' && (
+              <>
+                <span className="text-purple-400">👤</span>
+                Choose specific friends to share this habit with
+              </>
+            )}
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-base font-medium">Frequency</label>

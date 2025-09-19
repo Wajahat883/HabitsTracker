@@ -6,7 +6,6 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/useAuth';
 import UserProfileBadge from '../Components/Common/UserProfileBadge';
 import NotificationBell from '../Components/Notifications/NotificationBell';
-import SocialSidebar from '../Components/Friends/SocialSidebar';
 import Home from '../Pages/Home';
 import Dashboard from '../Pages/Dashboard';
 import image from '../assets/logo-habit-tracker.png';
@@ -17,6 +16,7 @@ const NAV_ITEMS = [
   { label: 'Dashboard', icon: <FaRegSun />, path: '/dashboard' },
   { label: 'Progress', icon: <FaRegSun />, path: '/dashboard#progress' },
   { label: 'Habit Todo', icon: <FaListAlt />, path: '/dashboard#habit-todo' },
+  { label: 'Social Hub', icon: <FaUserFriends />, path: '/dashboard#social-hub' },
   { label: 'Friends', icon: <FaUserFriends />, path: '/dashboard#friends' },
   { label: 'Status', icon: <FaCheckCircle />, path: '/dashboard#status' }
 ];
@@ -130,7 +130,7 @@ export default function AppShell() {
                         if(item.path.includes('#')){
                           const hash = item.path.split('#')[1];
                           // map hash to section label inside Dashboard
-                          const map = { 'progress':'Progress', 'habit-todo':'Habit Todo', 'friends':'Friends', 'status':'Status' };
+                          const map = { 'progress':'Progress', 'habit-todo':'Habit Todo', 'social-hub':'Social Hub', 'friends':'Friends', 'status':'Status' };
                           const section = map[hash];
                           if(section){
                             setTimeout(()=> window.dispatchEvent(new CustomEvent('dashboardSectionChange', { detail: section })), 0);
@@ -147,11 +147,6 @@ export default function AppShell() {
                 ))}
               </ul>
             </nav>
-            
-            {/* Social Features Section */}
-            <div className="mb-6">
-              <SocialSidebar />
-            </div>
             
             <div className="mt-auto text-xs text-muted opacity-60 px-2">Modern UI</div>
           </aside>

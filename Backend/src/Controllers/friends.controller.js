@@ -163,6 +163,36 @@ export const getSentRequests = asyncHandler(async (req, res) => {
     );
 });
 
+// Get all friend requests (both sent and received) - for backward compatibility
+export const getAllRequests = asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+    const { status = 'pending' } = req.query;
+    
+    // Get received requests
+    const receivedRequests = await FriendRequest.find({
+        receiver: userId,
+        status: status
+    })
+    .populate('sender', 'username email profilePicture createdAt')
+    .sort({ createdAt: -1 });
+    
+    // Get sent requests
+    const sentRequests = await FriendRequest.find({
+        sender: userId,
+        status: status
+    })
+    .populate('receiver', 'username email profilePicture createdAt')
+    .sort({ createdAt: -1 });
+    
+    return res.status(200).json(
+        new ApiResponse(200, {
+            received: receivedRequests,
+            sent: sentRequests,
+            total: receivedRequests.length + sentRequests.length
+        }, "All friend requests fetched successfully")
+    );
+});
+
 // Accept/Reject friend request
 export const respondToFriendRequest = asyncHandler(async (req, res) => {
     const { requestId } = req.params;

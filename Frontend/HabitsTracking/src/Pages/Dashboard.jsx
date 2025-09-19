@@ -60,6 +60,15 @@ const chartOptions = {
 
 const Dashboard = () => {
   const [activeSection, setActiveSection] = useState("Dashboard");
+  // Get current user data for personalized greeting
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('currentUser')) || { name: 'User' };
+    } catch {
+      return { name: 'User' };
+    }
+  });
+  
   // Areas local state (persist in localStorage)
   const [areas, setAreas] = useState(() => {
     try {
@@ -69,6 +78,8 @@ const Dashboard = () => {
   });
   const [editingArea, setEditingArea] = useState(null);
   const [areaNameDraft, setAreaNameDraft] = useState('');
+  const [showHabitForm, setShowHabitForm] = useState(false);
+  
   const saveAreaEdit = () => {
     if (!areaNameDraft.trim() || !editingArea) { 
       setEditingArea(null); 
@@ -288,136 +299,183 @@ const Dashboard = () => {
           onClose={()=> setShowAreaManager(false)}
         />
       )}
+      
+      {/* Habit Form Modal */}
+      {showHabitForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fadein" onClick={(e)=> { if(e.target===e.currentTarget) setShowHabitForm(false); }}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-gray-800">Create New Habit</h3>
+              <button 
+                onClick={() => setShowHabitForm(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6">
+              <HabitForm onCreated={() => setShowHabitForm(false)} />
+            </div>
+          </div>
+        </div>
+      )}
       {/* Dashboard Content */}
       {/* Dashboard Section */}
       {activeSection === "Dashboard" && (
         <>
-          {/* Hero / Overview Section */}
-          <div className="col-span-1 md:col-span-2 relative overflow-hidden rounded-3xl p-8 md:p-10 bg-gradient-to-br from-blue-700 via-indigo-700 to-purple-700 shadow-xl text-white animate-fadein">
-            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.25),transparent_60%)]" />
-            <div className="relative flex flex-col lg:flex-row lg:items-end gap-8">
-              <div className="flex-1">
-                <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">Your Habit Performance</h1>
-                <p className="text-sm md:text-base text-indigo-100 max-w-xl leading-relaxed">Stay consistent, track streaks, and compare with friends. This dashboard gives you a fast overview of progress and opportunities to improve.</p>
+          {/* Personal Greeting Header */}
+          <div className="col-span-1 md:col-span-2 mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-4xl font-bold text-gray-800 mb-2">
+                  Good morning, {currentUser.name || 'User'}! 👋
+                </h1>
+                <p className="text-gray-600">
+                  {new Date().toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </p>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 w-full lg:w-auto">
-                <div className="backdrop-blur bg-white/10 rounded-2xl p-4 border border-white/15 shadow-inner">
-                  <div className="text-[11px] uppercase tracking-wide text-indigo-200 mb-1">Habits</div>
-                  <div className="text-2xl font-bold">{totalHabits}</div>
-                  <div className="text-[11px] text-indigo-300">{activeHabits} active</div>
+              <div className="flex items-center gap-8">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-500">{todayCompletionCount}</div>
+                  <div className="text-sm text-gray-600">Completed</div>
                 </div>
-                <div className="backdrop-blur bg-white/10 rounded-2xl p-4 border border-white/15 shadow-inner">
-                  <div className="text-[11px] uppercase tracking-wide text-indigo-200 mb-1">Longest Streak</div>
-                  <div className="text-2xl font-bold">{longestStreak}</div>
-                  <div className="text-[11px] text-indigo-300">days</div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-gray-800">{totalHabits}</div>
+                  <div className="text-sm text-gray-600">Total Habits</div>
                 </div>
-                <div className="backdrop-blur bg-white/10 rounded-2xl p-4 border border-white/15 shadow-inner hidden sm:block">
-                  <div className="text-[11px] uppercase tracking-wide text-indigo-200 mb-1">Today Done</div>
-                  <div className="text-2xl font-bold">{todayCompletionCount}</div>
-                  <div className="text-[11px] text-indigo-300">completions</div>
-                </div>
-                <div className="backdrop-blur bg-white/10 rounded-2xl p-4 border border-white/15 shadow-inner">
-                  <div className="text-[11px] uppercase tracking-wide text-indigo-200 mb-1">Friends</div>
-                  <div className="text-2xl font-bold">{friendsCount}</div>
-                  <div className="text-[11px] text-indigo-300">connected</div>
-                </div>
-                <div className="backdrop-blur bg-white/10 rounded-2xl p-4 border border-white/15 shadow-inner">
-                  <div className="text-[11px] uppercase tracking-wide text-indigo-200 mb-1">Completion</div>
-                  <div className="text-2xl font-bold">{completionRate != null ? `${completionRate}%` : '—'}</div>
-                  <div className="text-[11px] text-indigo-300">overall</div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-orange-500">{completionRate != null ? `${completionRate}%` : '0%'}</div>
+                  <div className="text-sm text-gray-600">Complete</div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Four Bar Charts Layout */}
-          {/* 1. Your Progress (Bar) */}
-              <div className="bg-surface rounded-xl shadow-lg p-6 border border-app">
-                <h2 className="text-xl font-bold text-blue-300 mb-4">Your Progress</h2>
-                <Bar 
-                  key="your-progress-bar" 
-                  data={{
-                    labels: (progressSummary?.habitStreaks||[]).map(h=>h.title),
-                    datasets: [{
-                      label: 'Streak (days)',
-                      data: (progressSummary?.habitStreaks||[]).map(h=>h.streak),
-                      backgroundColor: '#38bdf8',
-                      borderRadius: 6
-                    }]
-                  }}
-                  options={chartOptions}
-                />
-                {!progressSummary && <div className="text-muted text-sm mt-4">Loading your progress...</div>}
-              </div>
+          {/* Today's Progress Bar */}
+          <div className="col-span-1 md:col-span-2 mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-medium text-gray-800">Today's Progress</h2>
+              <span className="text-sm text-gray-600">{todayCompletionCount} of {totalHabits} habits</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div 
+                className="bg-green-500 h-3 rounded-full transition-all duration-300" 
+                style={{ width: totalHabits > 0 ? `${(todayCompletionCount / totalHabits) * 100}%` : '0%' }}
+              ></div>
+            </div>
+          </div>
 
-              {/* 2. Selected Friend Progress (Bar) */}
-              <div className="bg-surface rounded-xl shadow-lg p-6 border border-app">
-                <h2 className="text-xl font-bold text-yellow-300 mb-4">Friend's Progress</h2>
-                <div className="mb-3">
-                  <select
-                    value={selectedFriend || ''}
-                    onChange={(e)=> {
-                      const id = e.target.value; setSelectedFriend(id); if (id) fetchFriendProgressData(id); else setFriendProgress(null);
-                    }}
-                    className="w-full bg-app-alt text-primary p-2 rounded border border-app text-sm focus:border-accent focus:outline-none"
+          {/* Today's Habits Section */}
+          <div className="col-span-1 md:col-span-2">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">Today's Habits</h2>
+              <button 
+                onClick={() => setShowHabitForm(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors"
+              >
+                <span className="text-lg">+</span>
+                Add Habit
+              </button>
+            </div>
+
+            {/* Habit Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {habits.length === 0 ? (
+                <div className="col-span-full text-center py-12">
+                  <div className="text-gray-400 text-lg mb-4">No habits yet</div>
+                  <button 
+                    onClick={() => setShowHabitForm(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
                   >
-                    <option value="">Select Friend...</option>
-                    {uniqueFriends.map(f=> <option key={`friend-sel-${f._id}`} value={f._id}>{f.name||'Friend'}</option>)}
-                  </select>
+                    Create Your First Habit
+                  </button>
                 </div>
-                {selectedFriend && friendProgress ? (
-                  <Bar
-                    key="friend-progress-bar"
-                    data={{
-                      labels: (friendProgress.habitStreaks||[]).map(h=>h.title),
-                      datasets: [{
-                        label: `${friends.find(f=>f._id===selectedFriend)?.name||'Friend'} Streak`,
-                        data: (friendProgress.habitStreaks||[]).map(h=>h.streak),
-                        backgroundColor: '#f59e0b',
-                        borderRadius: 6
-                      }]
-                    }}
-                    options={chartOptions}
-                  />
-                ) : (
-                  <div className="text-muted text-sm">Select a friend to view their progress.</div>
-                )}
-              </div>
+              ) : (
+                habits.map((habit) => {
+                  const streak = getStreak(habit._id);
+                  const habitType = habit.durationMinutes ? 'Time-based' : habit.targetCount ? 'Goal-oriented' : 'Binary';
+                  const typeColor = habitType === 'Binary' ? 'green' : habitType === 'Time-based' ? 'blue' : 'orange';
+                  
+                  return (
+                    <div key={habit._id} className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-gray-800">{habit.title}</h3>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-sm px-2 py-1 bg-${typeColor}-100 text-${typeColor}-700 rounded`}>
+                            {habitType}
+                          </span>
+                          <span className="text-sm text-gray-500 flex items-center gap-1">
+                            🔥 {streak}
+                          </span>
+                        </div>
+                      </div>
 
-              {/* 3. Comparison (You vs Friend) */}
-              <div className="bg-surface rounded-xl shadow-lg p-6 border border-app">
-                <h2 className="text-xl font-bold text-purple-300 mb-4">Comparison</h2>
-                <Bar key="comparison-bar" data={compareData} options={chartOptions} />
-                {!selectedFriend && <div className="text-muted text-xs mt-3">Select a friend to populate comparison chart.</div>}
-              </div>
+                      {/* Binary Habit */}
+                      {habitType === 'Binary' && (
+                        <button className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-medium transition-colors">
+                          Mark Complete
+                        </button>
+                      )}
 
-              {/* 4. All Friends Aggregate */}
-              <div className="bg-surface rounded-xl shadow-lg p-6 border border-app">
-                <h2 className="text-xl font-bold text-green-300 mb-4">All Friends</h2>
-                <Bar
-                  key="all-friends-progress-bar"
-                  data={{
-                    labels: friendsProgress.map(fp => fp.name),
-                    datasets: [{
-                      label: 'Completion %',
-                      data: friendsProgress.map(fp => fp.overallCompletion),
-                      backgroundColor: '#10b981',
-                      borderRadius: 6
-                    }]
-                  }}
-                  options={chartOptions}
-                />
-                {friendsProgress.length === 0 && <div className="text-muted text-sm mt-3">No friend progress yet.</div>}
-              </div>
-              
-              {/* Your Folders Section */}
-              {/* Removed old habit folder grid */}
+                      {/* Time-based Habit */}
+                      {habitType === 'Time-based' && (
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                            <span>Goal: {habit.durationMinutes} minutes</span>
+                            <span>0 minutes</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+                            <div className="bg-blue-500 h-2 rounded-full" style={{ width: '0%' }}></div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-medium transition-colors">
+                              +15m
+                            </button>
+                            <button className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-medium transition-colors">
+                              +30m
+                            </button>
+                            <button className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                              min
+                            </button>
+                            <button className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
-              {/* Quick Habit Tracker */}
-              {/* Quick Habit Tracker section removed as per user request */}
-              
-            </>
-          )}
+                      {/* Goal-oriented Habit */}
+                      {habitType === 'Goal-oriented' && (
+                        <div className="mb-4">
+                          <div className="text-sm text-gray-600 mb-2">
+                            Goal: {habit.targetCount} {habit.title.toLowerCase().includes('water') ? 'glasses' : 'units'}
+                          </div>
+                          <div className="text-lg font-medium text-gray-800 mb-3">0 completed</div>
+                          <button className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+                            <span className="text-lg">+</span>
+                            +1 {habit.title.toLowerCase().includes('water') ? 'glass' : 'unit'}
+                          </button>
+                        </div>
+                      )}
+
+                      {habit.description && (
+                        <div className="mt-3 text-sm text-gray-500 border-t pt-3">
+                          {habit.description}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
           {/* Progress Section (Summary Only) */}
           {activeSection === "Progress" && (
@@ -494,32 +552,153 @@ const Dashboard = () => {
               </React.Fragment>
             )
           ))}
-          {/* Friends Section */}
+          {/* Social Hub Section - Community Only */}
+          {activeSection === "Social Hub" && (
+            <div className="col-span-1 md:col-span-2">
+              <div className="space-y-8">
+                {/* Header Section with Gradient */}
+                <div className="relative mb-8">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-2xl blur-xl"></div>
+                  <div className="relative bg-[var(--color-bg-alt)]/80 backdrop-blur border border-[var(--color-border)]/50 rounded-2xl p-8 shadow-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-4">
+                        <div className="relative float">
+                          <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl blur opacity-20"></div>
+                          <div className="relative bg-gradient-to-r from-blue-500 to-purple-600 p-3 rounded-xl shadow-lg glow animate-gradient">
+                            <FaUsers className="text-white text-xl" />
+                          </div>
+                        </div>
+                        <div>
+                          <h2 className="text-3xl font-bold text-[var(--color-text)] tracking-tight">Social Hub</h2>
+                          <p className="text-[var(--color-text-muted)] mt-1">Discover and connect with the community</p>
+                        </div>
+                      </div>
+                      <div className="hidden md:flex items-center gap-3">
+                        <div className="px-4 py-2 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full border border-blue-500/30">
+                          <span className="text-sm font-medium text-blue-400">Community</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative mb-6 stagger-child reveal-card">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-cyan-500/5 rounded-xl blur-lg"></div>
+                  <div className="relative bg-[var(--color-bg)]/90 backdrop-blur border border-[var(--color-border)]/50 rounded-xl p-4 shadow-lg">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg shadow-lg">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-semibold text-[var(--color-text)]">Search Community</h3>
+                    </div>
+                    <UserSearch />
+                  </div>
+                </div>
+
+                {/* Community Section */}
+                <div className="relative stagger-child reveal-card">
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 rounded-2xl blur-xl"></div>
+                  <div className="relative bg-[var(--color-bg)]/90 backdrop-blur border border-[var(--color-border)]/50 rounded-2xl p-6 shadow-lg">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-3 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl shadow-lg">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 0 15.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 0 19.288 0M15 7a3 3 0 11-6 0 3 3 0 0 16 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 0 14 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-[var(--color-text)]">Community</h3>
+                        <p className="text-sm text-[var(--color-text-muted)]">Discover and connect with users</p>
+                      </div>
+                    </div>
+                    <div className="bg-[var(--color-bg-alt)]/30 rounded-xl p-4 border border-[var(--color-border)]/30 max-h-96 overflow-y-auto app-scrollbar">
+                      <AllUsersList />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Friends Section - With Progress Indicators */}
           {activeSection === "Friends" && (
-            <>
-              {/* Current Friends List */}
-              <div className="col-span-1">
-                <FriendsList />
+            <div className="col-span-1 md:col-span-2">
+              <div className="space-y-8">
+                {/* Header Section with Gradient */}
+                <div className="relative mb-8">
+                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-teal-500/10 rounded-2xl blur-xl"></div>
+                  <div className="relative bg-[var(--color-bg-alt)]/80 backdrop-blur border border-[var(--color-border)]/50 rounded-2xl p-8 shadow-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-4">
+                        <div className="relative float">
+                          <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl blur opacity-20"></div>
+                          <div className="relative bg-gradient-to-r from-green-500 to-emerald-600 p-3 rounded-xl shadow-lg glow animate-gradient">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div>
+                          <h2 className="text-3xl font-bold text-[var(--color-text)] tracking-tight">Friends</h2>
+                          <p className="text-[var(--color-text-muted)] mt-1">Manage your connections and network</p>
+                        </div>
+                      </div>
+                      <div className="hidden md:flex items-center gap-3">
+                        <div className="px-4 py-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-full border border-green-500/30">
+                          <span className="text-sm font-medium text-green-400">Connected</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Friends List with Progress Indicators */}
+                <div className="relative stagger-child reveal-card mb-6">
+                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-2xl blur-xl"></div>
+                  <div className="relative bg-[var(--color-bg)]/90 backdrop-blur border border-[var(--color-border)]/50 rounded-2xl p-6 shadow-lg">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl shadow-lg">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 0 15.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 0 19.288 0M15 7a3 3 0 11-6 0 3 3 0 0 16 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 0 14 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-[var(--color-text)]">My Friends</h3>
+                        <p className="text-sm text-[var(--color-text-muted)]">Your connected friends with their progress</p>
+                      </div>
+                    </div>
+                    <div className="bg-[var(--color-bg-alt)]/30 rounded-xl p-4 border border-[var(--color-border)]/30 max-h-80 overflow-y-auto app-scrollbar">
+                      <FriendsList showProgress={true} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Invite Friends Section */}
+                <div className="relative stagger-child reveal-card">
+                  <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-yellow-500/10 rounded-2xl blur-xl"></div>
+                  <div className="relative bg-[var(--color-bg)]/90 backdrop-blur border border-[var(--color-border)]/50 rounded-2xl p-6 shadow-lg">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-3 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-xl shadow-lg">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-[var(--color-text)]">Invite Friends</h3>
+                        <p className="text-sm text-[var(--color-text-muted)]">Share your experience and grow your network</p>
+                      </div>
+                    </div>
+                    <div className="bg-[var(--color-bg-alt)]/30 rounded-xl p-4 border border-[var(--color-border)]/30">
+                      <InviteFriends onInviteSent={() => {
+                        loadHabits(); // This also loads friends in the context
+                      }} />
+                    </div>
+                  </div>
+                </div>
               </div>
-              
-              {/* Invite by Email/Link */}
-              <div className="col-span-1">
-                <InviteFriends onInviteSent={() => {
-                  // Refresh friends list when invite is sent
-                  loadHabits(); // This also loads friends in the context
-                }} />
-              </div>
-              
-              {/* Search Existing Users */}
-              <div className="col-span-1">
-                <UserSearch />
-              </div>
-              
-              {/* All Users List with Pagination */}
-              <div className="col-span-1">
-                <AllUsersList />
-              </div>
-            </>
+            </div>
           )}
 
           {/* Status Section - Implementation Summary */}
