@@ -60,14 +60,6 @@ const chartOptions = {
 
 const Dashboard = () => {
   const [activeSection, setActiveSection] = useState("Dashboard");
-  // Get current user data for personalized greeting
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('currentUser')) || { name: 'User' };
-    } catch {
-      return { name: 'User' };
-    }
-  });
   
   // Areas local state (persist in localStorage)
   const [areas, setAreas] = useState(() => {
@@ -238,6 +230,8 @@ const Dashboard = () => {
     return ()=> window.removeEventListener('dashboardSectionChange', handler);
   }, []);
 
+
+
   // Persist areas
   useEffect(() => {
     try { localStorage.setItem('habitTracker_areas_v2', JSON.stringify(areas)); } catch { /* ignore persist errors */ }
@@ -246,24 +240,9 @@ const Dashboard = () => {
   // Auth/session effects removed – Dashboard assumes authenticated context via AppShell
 
   // ---- Derived Dashboard Metrics ----
-  const todayISO = new Date().toISOString().split('T')[0];
-  const totalHabits = Array.isArray(habits) ? habits.length : 0;
-  const activeHabits = Array.isArray(habits) ? habits.filter(h => !h.endDate || h.endDate >= todayISO).length : 0;
-  const longestStreak = (() => {
-    const ps = progressSummary?.habitStreaks || [];
-    let max = 0;
-    for (const hs of ps) if (typeof hs.streak === 'number' && hs.streak > max) max = hs.streak;
-    if (max === 0 && Array.isArray(habits)) {
-      for (const h of habits) { const s = getStreak(h._id); if (s > max) max = s; }
-    }
-    return max;
-  })();
-  const friendsCount = uniqueFriends.length;
-  const todayCompletionCount = progressSummary?.todayCompletions || 0; // fallback
-  const completionRate = progressSummary?.overallCompletionRate != null ? Math.round(progressSummary.overallCompletionRate) : null;
 
   return (
-    <div className="p-6 md:p-10 min-h-screen grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto text-primary animate-fadein">
+    <div className="p-6 md:p-10 min-h-screen bg-gray-50 overflow-y-auto animate-fadein">
       {editingArea && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fadein" onClick={(e)=> { if(e.target===e.currentTarget) cancelAreaEdit(); }}>
           <div className="card w-full max-w-sm p-5 relative animate-pop">
@@ -323,55 +302,9 @@ const Dashboard = () => {
       {/* Dashboard Section */}
       {activeSection === "Dashboard" && (
         <>
-          {/* Personal Greeting Header */}
-          <div className="col-span-1 md:col-span-2 mb-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-4xl font-bold text-gray-800 mb-2">
-                  Good morning, {currentUser.name || 'User'}! 👋
-                </h1>
-                <p className="text-gray-600">
-                  {new Date().toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}
-                </p>
-              </div>
-              <div className="flex items-center gap-8">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-green-500">{todayCompletionCount}</div>
-                  <div className="text-sm text-gray-600">Completed</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-gray-800">{totalHabits}</div>
-                  <div className="text-sm text-gray-600">Total Habits</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-orange-500">{completionRate != null ? `${completionRate}%` : '0%'}</div>
-                  <div className="text-sm text-gray-600">Complete</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Today's Progress Bar */}
-          <div className="col-span-1 md:col-span-2 mb-8">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-medium text-gray-800">Today's Progress</h2>
-              <span className="text-sm text-gray-600">{todayCompletionCount} of {totalHabits} habits</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div 
-                className="bg-green-500 h-3 rounded-full transition-all duration-300" 
-                style={{ width: totalHabits > 0 ? `${(todayCompletionCount / totalHabits) * 100}%` : '0%' }}
-              ></div>
-            </div>
-          </div>
 
           {/* Today's Habits Section */}
-          <div className="col-span-1 md:col-span-2">
+          <div>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-800">Today's Habits</h2>
               <button 
