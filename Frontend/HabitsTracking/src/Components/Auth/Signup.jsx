@@ -64,7 +64,7 @@ const Signup = ({ onSuccess }) => {
   const navigate = useNavigate();
   const { authenticated } = useAuth();
   if (authenticated) {
-    navigate('/home');
+    navigate('/app/home');
     return null;
   }
 
@@ -79,7 +79,7 @@ const Signup = ({ onSuccess }) => {
     persistAuth({ profile: finalProfile, accessToken: localStorage.getItem('authToken'), refreshToken: localStorage.getItem('refreshToken') });
     if (onSuccess) onSuccess(finalProfile);
     window.dispatchEvent(new CustomEvent('userLoggedIn', { detail: finalProfile }));
-  setTimeout(() => { if (!onSuccess) navigate('/home'); }, 1000);
+  setTimeout(() => { if (!onSuccess) navigate('/app/home'); }, 1000);
   };
 
   const handleSignup = async (e) => {

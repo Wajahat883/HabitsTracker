@@ -302,109 +302,189 @@ const Dashboard = () => {
       {/* Dashboard Section */}
       {activeSection === "Dashboard" && (
         <>
-
-          {/* Today's Habits Section */}
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Today's Habits</h2>
-              <button 
-                onClick={() => setShowHabitForm(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors"
-              >
-                <span className="text-lg">+</span>
-                Add Habit
-              </button>
-            </div>
-
-            {/* Habit Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {habits.length === 0 ? (
-                <div className="col-span-full text-center py-12">
-                  <div className="text-gray-400 text-lg mb-4">No habits yet</div>
-                  <button 
-                    onClick={() => setShowHabitForm(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-                  >
-                    Create Your First Habit
-                  </button>
+          {/* Analytics Charts Section */}
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold text-gray-800 mb-8">Analytics & Progress</h2>
+            
+            {/* Charts Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              
+              {/* Chart 1: My Progress */}
+              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800">My Progress</h3>
+                  <div className="text-sm text-gray-500">Last 7 days</div>
                 </div>
-              ) : (
-                habits.map((habit) => {
-                  const streak = getStreak(habit._id);
-                  const habitType = habit.durationMinutes ? 'Time-based' : habit.targetCount ? 'Goal-oriented' : 'Binary';
-                  const typeColor = habitType === 'Binary' ? 'green' : habitType === 'Time-based' ? 'blue' : 'orange';
-                  
-                  return (
-                    <div key={habit._id} className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-800">{habit.title}</h3>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-sm px-2 py-1 bg-${typeColor}-100 text-${typeColor}-700 rounded`}>
-                            {habitType}
-                          </span>
-                          <span className="text-sm text-gray-500 flex items-center gap-1">
-                            🔥 {streak}
-                          </span>
-                        </div>
-                      </div>
+                <div className="h-64">
+                  <Bar 
+                    data={{
+                      labels: progressSummary?.habitStreaks?.map(h => h.title) || ['No Data'],
+                      datasets: [{
+                        label: 'Your Streaks',
+                        data: progressSummary?.habitStreaks?.map(h => h.streak) || [0],
+                        backgroundColor: '#3B82F6',
+                        borderRadius: 8,
+                        borderSkipped: false,
+                      }]
+                    }}
+                    options={{
+                      ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        legend: { display: false }
+                      },
+                      scales: {
+                        ...chartOptions.scales,
+                        x: { grid: { color: "#E5E7EB" }, ticks: { color: "#6B7280" } },
+                        y: { grid: { color: "#E5E7EB" }, ticks: { color: "#6B7280" } }
+                      }
+                    }} 
+                  />
+                </div>
+              </div>
 
-                      {/* Binary Habit */}
-                      {habitType === 'Binary' && (
-                        <button className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-medium transition-colors">
-                          Mark Complete
-                        </button>
-                      )}
-
-                      {/* Time-based Habit */}
-                      {habitType === 'Time-based' && (
-                        <div className="mb-4">
-                          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-                            <span>Goal: {habit.durationMinutes} minutes</span>
-                            <span>0 minutes</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                            <div className="bg-blue-500 h-2 rounded-full" style={{ width: '0%' }}></div>
-                          </div>
-                          <div className="flex gap-2">
-                            <button className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-medium transition-colors">
-                              +15m
-                            </button>
-                            <button className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-medium transition-colors">
-                              +30m
-                            </button>
-                            <button className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-                              min
-                            </button>
-                            <button className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Goal-oriented Habit */}
-                      {habitType === 'Goal-oriented' && (
-                        <div className="mb-4">
-                          <div className="text-sm text-gray-600 mb-2">
-                            Goal: {habit.targetCount} {habit.title.toLowerCase().includes('water') ? 'glasses' : 'units'}
-                          </div>
-                          <div className="text-lg font-medium text-gray-800 mb-3">0 completed</div>
-                          <button className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
-                            <span className="text-lg">+</span>
-                            +1 {habit.title.toLowerCase().includes('water') ? 'glass' : 'unit'}
-                          </button>
-                        </div>
-                      )}
-
-                      {habit.description && (
-                        <div className="mt-3 text-sm text-gray-500 border-t pt-3">
-                          {habit.description}
-                        </div>
-                      )}
+              {/* Chart 2: Selected Friend's Progress */}
+              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800">Friend's Progress</h3>
+                  <select 
+                    value={selectedFriend?._id || ''} 
+                    onChange={(e) => {
+                      const friendId = e.target.value;
+                      const friend = uniqueFriends.find(f => f._id === friendId);
+                      setSelectedFriend(friend || null);
+                      if (friend) fetchFriendProgressData(friendId);
+                    }}
+                    className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select a friend</option>
+                    {uniqueFriends.map(friend => (
+                      <option key={friend._id} value={friend._id}>
+                        {friend.username || friend.name || 'Unknown'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="h-64">
+                  {selectedFriend && friendProgress?.habitStreaks ? (
+                    <Bar 
+                      data={{
+                        labels: friendProgress.habitStreaks.map(h => h.title),
+                        datasets: [{
+                          label: `${selectedFriend.username || selectedFriend.name || 'Friend'}'s Streaks`,
+                          data: friendProgress.habitStreaks.map(h => h.streak),
+                          backgroundColor: '#10B981',
+                          borderRadius: 8,
+                          borderSkipped: false,
+                        }]
+                      }}
+                      options={{
+                        ...chartOptions,
+                        plugins: {
+                          ...chartOptions.plugins,
+                          legend: { display: false }
+                        },
+                        scales: {
+                          ...chartOptions.scales,
+                          x: { grid: { color: "#E5E7EB" }, ticks: { color: "#6B7280" } },
+                          y: { grid: { color: "#E5E7EB" }, ticks: { color: "#6B7280" } }
+                        }
+                      }} 
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-gray-500">
+                      {selectedFriend ? 'Loading friend data...' : 'Select a friend to view their progress'}
                     </div>
-                  );
-                })
-              )}
+                  )}
+                </div>
+              </div>
+
+              {/* Chart 3: Comparison Chart */}
+              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800">You vs Friend</h3>
+                  <div className="text-sm text-gray-500">
+                    {selectedFriend ? `vs ${selectedFriend.username || selectedFriend.name}` : 'Select friend above'}
+                  </div>
+                </div>
+                <div className="h-64">
+                  {selectedFriend && compareData ? (
+                    <Bar 
+                      data={compareData}
+                      options={{
+                        ...chartOptions,
+                        plugins: {
+                          ...chartOptions.plugins,
+                          legend: { 
+                            display: true,
+                            labels: { color: "#6B7280" }
+                          }
+                        },
+                        scales: {
+                          ...chartOptions.scales,
+                          x: { grid: { color: "#E5E7EB" }, ticks: { color: "#6B7280" } },
+                          y: { grid: { color: "#E5E7EB" }, ticks: { color: "#6B7280" } }
+                        }
+                      }} 
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-gray-500">
+                      Select a friend above to see comparison
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Chart 4: All Friends Progress */}
+              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800">All Friends Progress</h3>
+                  <div className="text-sm text-gray-500">{uniqueFriends.length} friends</div>
+                </div>
+                <div className="h-64">
+                  {friendsProgress.length > 0 ? (
+                    <Bar 
+                      data={{
+                        labels: friendsProgress.map(f => f.username || f.name || 'Unknown'),
+                        datasets: [{
+                          label: 'Friends Average Completion',
+                          data: friendsProgress.map(f => f.averageCompletion || 0),
+                          backgroundColor: [
+                            '#EF4444', '#F97316', '#F59E0B', '#EAB308', 
+                            '#84CC16', '#22C55E', '#10B981', '#14B8A6',
+                            '#06B6D4', '#0EA5E9', '#3B82F6', '#6366F1',
+                            '#8B5CF6', '#A855F7', '#D946EF', '#EC4899'
+                          ].slice(0, friendsProgress.length),
+                          borderRadius: 8,
+                          borderSkipped: false,
+                        }]
+                      }}
+                      options={{
+                        ...chartOptions,
+                        plugins: {
+                          ...chartOptions.plugins,
+                          legend: { display: false }
+                        },
+                        scales: {
+                          ...chartOptions.scales,
+                          x: { grid: { color: "#E5E7EB" }, ticks: { color: "#6B7280" } },
+                          y: { 
+                            grid: { color: "#E5E7EB" }, 
+                            ticks: { color: "#6B7280" },
+                            beginAtZero: true,
+                            max: 100
+                          }
+                        }
+                      }} 
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-gray-500">
+                      {uniqueFriends.length === 0 ? 'No friends added yet' : 'Loading friends progress...'}
+                    </div>
+                  )}
+                </div>
+              </div>
+
             </div>
           </div>
         </>

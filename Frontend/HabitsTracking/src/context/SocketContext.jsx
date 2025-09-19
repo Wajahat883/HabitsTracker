@@ -38,11 +38,11 @@ export const SocketProvider = ({ children }) => {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('✅ Socket.IO: Connected successfully');
+      console.log(' Socket.IO: Connected successfully');
       setConnected(true);
     });
     socket.on('disconnect', (reason) => {
-      console.log(`❌ Socket.IO: Disconnected - ${reason}`);
+      console.log(`Socket.IO: Disconnected - ${reason}`);
       setConnected(false);
       if (reason === 'io server disconnect') {
         // manual disconnect by server -> attempt reconnect

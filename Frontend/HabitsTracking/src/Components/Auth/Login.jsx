@@ -65,7 +65,7 @@ const Login = ({ onSuccess }) => {
   const { authenticated } = useAuth();
   if (authenticated) {
     // Already logged in; avoid flashing login screen
-    navigate('/home');
+    navigate('/app/home');
     return null;
   }
 
@@ -93,7 +93,7 @@ const Login = ({ onSuccess }) => {
     setStreakPopup(true); // show popup after streak resolved (fast request)
     setTimeout(() => {
       setStreakPopup(false);
-            if (!onSuccess) navigate('/home');
+            if (!onSuccess) navigate('/app/home');
     }, 1000);
   };
 

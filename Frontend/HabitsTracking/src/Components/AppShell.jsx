@@ -12,13 +12,13 @@ import image from '../assets/logo-habit-tracker.png';
 
 // Basic sidebar items list (labels used for active state)
 const NAV_ITEMS = [
-  { label: 'Home', icon: <FaHome />, path: '/home' },
-  { label: 'Dashboard', icon: <FaRegSun />, path: '/dashboard' },
-  { label: 'Progress', icon: <FaRegSun />, path: '/dashboard#progress' },
-  { label: 'Habit Todo', icon: <FaListAlt />, path: '/dashboard#habit-todo' },
-  { label: 'Social Hub', icon: <FaUserFriends />, path: '/dashboard#social-hub' },
-  { label: 'Friends', icon: <FaUserFriends />, path: '/dashboard#friends' },
-  { label: 'Status', icon: <FaCheckCircle />, path: '/dashboard#status' }
+  { label: 'Home', icon: <FaHome />, path: '/app/home' },
+  { label: 'Dashboard', icon: <FaRegSun />, path: '/app/dashboard' },
+  { label: 'Progress', icon: <FaRegSun />, path: '/app/dashboard#progress' },
+  { label: 'Habit Todo', icon: <FaListAlt />, path: '/app/dashboard#habit-todo' },
+  { label: 'Social Hub', icon: <FaUserFriends />, path: '/app/dashboard#social-hub' },
+  { label: 'Friends', icon: <FaUserFriends />, path: '/app/dashboard#friends' },
+  { label: 'Status', icon: <FaCheckCircle />, path: '/app/dashboard#status' }
 ];
 
 export default function AppShell() {

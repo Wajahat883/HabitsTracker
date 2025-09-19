@@ -6,6 +6,7 @@ import Login from "./Components/Auth/Login";
 import Signup from "./Components/Auth/Signup";
 import Dashboard from "./Pages/Dashboard";
 import Home from "./Pages/Home";
+import LandingPage from "./Pages/LandingPage";
 import AppShell from "./Components/AppShell";
 import { CompletionProvider } from './context/CompletionContext';
 import { ChartDataProvider } from "./context/ChartDataContext";
@@ -13,7 +14,36 @@ import { ThemeProvider } from './context/ThemeContext';
 import { HabitProvider } from "./context/HabitContextStable";
 import { SocketProvider } from "./context/SocketContext";
 import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./context/useAuth";
 import ErrorBoundary from './Components/Common/ErrorBoundary';
+
+// Router component that handles authentication-based routing
+const AppRouter = () => {
+  const { authenticated, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+  
+  return (
+    <Routes>
+      {/* Public routes - Landing page is the default */}
+      <Route path="/" element={authenticated ? <Navigate to="/app/home" replace /> : <LandingPage />} />
+      <Route path="/login" element={authenticated ? <Navigate to="/app/home" replace /> : <Login />} />
+      <Route path="/signup" element={authenticated ? <Navigate to="/app/home" replace /> : <Signup />} />
+      
+      {/* Protected app routes */}
+      <Route path="/app/*" element={authenticated ? <AppShell /> : <Navigate to="/" replace />} />
+      
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to={authenticated ? "/app/home" : "/"} replace />} />
+    </Routes>
+  );
+};
 
 function App() {
   return (
@@ -25,11 +55,7 @@ function App() {
               <CompletionProvider>
                 <SocketProvider>
                   <Router>
-                    <Routes>
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/signup" element={<Signup />} />
-                      <Route path="/*" element={<AppShell />} />
-                    </Routes>
+                    <AppRouter />
                   </Router>
                 </SocketProvider>
               </CompletionProvider>
