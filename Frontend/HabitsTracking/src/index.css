@@ -424,7 +424,26 @@ a:focus {
 
 .card-floating:hover {
   animation-play-state: paused;
-  transform: translateY(-10px) scale(1.02);
+  /* Removed transform to prevent movement */
+}
+
+/* Static Card (No Movement) */
+.card-static {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  transition: box-shadow 0.3s ease;
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.card-static:hover {
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.12),
+    0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 /* Neon Border Card */
@@ -564,14 +583,14 @@ a:focus {
 }
 
 .btn:hover {
-  transform: translateY(-3px) scale(1.02);
+  /* Removed transform to prevent movement */
   box-shadow: 
     0 15px 40px rgba(59, 130, 246, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .btn:active {
-  transform: translateY(-1px) scale(0.98);
+  opacity: 0.9;
 }
 
 .btn:focus {
@@ -613,7 +632,7 @@ a:focus {
 .btn-glass:hover {
   background: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
+  /* Removed transform to prevent movement */
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
@@ -681,7 +700,7 @@ a:focus {
 .btn-ghost:hover {
   background: var(--color-bg-alt);
   border-color: var(--color-primary);
-  transform: translateY(-2px);
+  /* Removed transform to prevent movement */
 }
 
 /* Button Sizes */
@@ -752,7 +771,7 @@ a:focus {
 
 .input-floating input:focus {
   border-image: var(--gradient-primary) 1;
-  transform: translateY(-2px);
+  /* Removed transform to prevent movement */
   box-shadow: 
     0 10px 30px rgba(59, 130, 246, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -877,12 +896,12 @@ a:focus {
     0 0 0 3px rgba(59, 130, 246, 0.1), 
     0 8px 25px rgba(59, 130, 246, 0.15);
   background: rgba(255, 255, 255, 0.05);
-  transform: translateY(-2px) scale(1.01);
+  /* Removed transform to prevent movement */
 }
 
 .input:hover, .select:hover, .textarea:hover {
   border-color: var(--color-border-light);
-  transform: translateY(-1px);
+  /* Removed transform to prevent movement */
 }
 
 .input::placeholder, .textarea::placeholder {
@@ -1045,7 +1064,7 @@ a:focus {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .hover-lift:hover {
-  transform: translateY(-4px) scale(1.02);
+  /* Removed transform to prevent movement */
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
@@ -1304,7 +1323,7 @@ select[name="privacy"] option:checked {
 }
 
 .hover-lift:hover {
-  transform: translateY(-2px);
+  /* Removed transform to prevent movement */
   box-shadow: var(--shadow-lg);
 }
 

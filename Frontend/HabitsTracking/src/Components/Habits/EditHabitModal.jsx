@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const HabitModal = ({ isOpen, onClose, onSubmit }) => {
+const EditHabitModal = ({ isOpen, onClose, onSubmit, habit }) => {
   const [formData, setFormData] = useState({
     name: '',
     type: 'Binary',
@@ -11,23 +11,6 @@ const HabitModal = ({ isOpen, onClose, onSubmit }) => {
   });
 
   const habitIcons = ['🎯', '🧘‍♂️', '📚', '💪', '💧', '🏃‍♀️', '🎨', '🎵', '💻', '🍎'];
-  const habitTypes = [
-    {
-      id: 'Binary',
-      label: 'Binary',
-      description: 'Yes/No tracking (e.g., "Did I meditate today?")'
-    },
-    {
-      id: 'Time-based',
-      label: 'Time-based',
-      description: 'Duration tracking (e.g., "Read for 30 minutes")'
-    },
-    {
-      id: 'Goal-oriented',
-      label: 'Goal-oriented',
-      description: 'Quantity tracking (e.g., "Complete 3 workouts this week")'
-    }
-  ];
 
   const privacyOptions = [
     'Private (only you)',
@@ -38,54 +21,59 @@ const HabitModal = ({ isOpen, onClose, onSubmit }) => {
   const timeUnits = ['minutes', 'hours'];
   const goalUnits = ['workouts', 'glasses', 'pages', 'exercises', 'tasks'];
 
+  // Initialize form with habit data when habit changes
+  useEffect(() => {
+    if (habit) {
+      setFormData({
+        name: habit.name || '',
+        type: habit.frequencyType === 'daily' ? 'Binary' : habit.type || 'Binary',
+        privacy: habit.privacy || 'Private (only you)',
+        goal: habit.goal || habit.weeklyGoal || habit.dailyGoal || '',
+        unit: habit.unit || 'minutes',
+        icon: habit.icon || '🎯'
+      });
+    }
+  }, [habit]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    const habitData = {
-      id: Date.now(),
+    const updatedData = {
       name: formData.name.trim(),
-      type: formData.type,
       icon: formData.icon,
-      color: getRandomColor(),
-      completed: false,
-      streak: 0,
-      progress: 0,
-      current: 0
+      privacy: formData.privacy
     };
 
+    // Add goal-specific fields based on type
     if (formData.type === 'Time-based') {
-      habitData.goal = parseInt(formData.goal) || 30;
-      habitData.unit = formData.unit;
+      updatedData.goal = parseInt(formData.goal) || 30;
+      updatedData.unit = formData.unit;
     } else if (formData.type === 'Goal-oriented') {
       const isWeekly = formData.unit === 'workouts';
       if (isWeekly) {
-        habitData.weeklyGoal = parseInt(formData.goal) || 4;
+        updatedData.weeklyGoal = parseInt(formData.goal) || 4;
       } else {
-        habitData.dailyGoal = parseInt(formData.goal) || 8;
+        updatedData.dailyGoal = parseInt(formData.goal) || 8;
       }
-      habitData.unit = formData.unit;
+      updatedData.unit = formData.unit;
     }
 
-    onSubmit(habitData);
-    resetForm();
+    onSubmit(habit.id, updatedData);
     onClose();
   };
 
-  const getRandomColor = () => {
-    const colors = ['emerald', 'blue', 'orange', 'cyan', 'purple', 'pink', 'indigo', 'teal'];
-    return colors[Math.floor(Math.random() * colors.length)];
-  };
-
   const resetForm = () => {
-    setFormData({
-      name: '',
-      type: 'Binary',
-      privacy: 'Private (only you)',
-      goal: '',
-      unit: 'minutes',
-      icon: '🎯'
-    });
+    if (habit) {
+      setFormData({
+        name: habit.name || '',
+        type: habit.frequencyType === 'daily' ? 'Binary' : habit.type || 'Binary',
+        privacy: habit.privacy || 'Private (only you)',
+        goal: habit.goal || habit.weeklyGoal || habit.dailyGoal || '',
+        unit: habit.unit || 'minutes',
+        icon: habit.icon || '🎯'
+      });
+    }
   };
 
   const handleClose = () => {
@@ -109,7 +97,7 @@ const HabitModal = ({ isOpen, onClose, onSubmit }) => {
         <div className="card-floating animate-slide-up modal-scroll" style={{background: 'var(--color-surface)', maxHeight: '90vh', overflowY: 'auto'}}>
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold" style={{color: 'var(--color-text)'}}>Create New Habit</h2>
+            <h2 className="text-2xl font-bold" style={{color: 'var(--color-text)'}}>Edit Habit</h2>
             <button
               onClick={handleClose}
               className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -164,38 +152,7 @@ const HabitModal = ({ isOpen, onClose, onSubmit }) => {
               </div>
             </div>
 
-            {/* Habit Type */}
-            <div>
-              <label className="block text-sm font-medium mb-3" style={{color: 'var(--color-text)'}}>
-                Habit Type
-              </label>
-              <div className="space-y-3">
-                {habitTypes.map((type) => (
-                  <div key={type.id}>
-                    <label className="flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all duration-200" 
-                           style={{
-                             background: formData.type === type.id ? 'var(--color-primary-light)' : 'var(--color-bg)',
-                             borderColor: formData.type === type.id ? 'var(--color-primary)' : 'var(--color-border)'
-                           }}>
-                      <input
-                        type="radio"
-                        name="type"
-                        value={type.id}
-                        checked={formData.type === type.id}
-                        onChange={(e) => setFormData(prev => ({...prev, type: e.target.value}))}
-                        className="mt-1 w-4 h-4 text-blue-600"
-                      />
-                      <div>
-                        <div className="font-medium" style={{color: 'var(--color-text)'}}>{type.label}</div>
-                        <div className="text-sm" style={{color: 'var(--color-text-muted)'}}>{type.description}</div>
-                      </div>
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Goal Settings for Time-based and Goal-oriented */}
+            {/* Goal Settings for Time-based and Goal-oriented (if applicable) */}
             {(formData.type === 'Time-based' || formData.type === 'Goal-oriented') && (
               <div>
                 <label className="block text-sm font-medium mb-2" style={{color: 'var(--color-text)'}}>
@@ -280,7 +237,7 @@ const HabitModal = ({ isOpen, onClose, onSubmit }) => {
                 type="submit"
                 className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium transition-all duration-200"
               >
-                Create Habit
+                Update Habit
               </button>
             </div>
           </form>
@@ -290,4 +247,4 @@ const HabitModal = ({ isOpen, onClose, onSubmit }) => {
   );
 };
 
-export default HabitModal;
+export default EditHabitModal;

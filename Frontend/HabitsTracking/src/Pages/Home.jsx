@@ -1,56 +1,29 @@
 ﻿import React, { useState, useEffect } from 'react';
 import HabitModal from '../Components/Habits/HabitModal';
+import EditHabitModal from '../Components/Habits/EditHabitModal';
+import DeleteHabitModal from '../Components/Habits/DeleteHabitModal';
+import { habitAPI } from '../services/api';
+import { useAuth } from '../context/useAuth';
 
 const Home = () => {
+  const { user, authenticated, token } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [habits, setHabits] = useState([
-    {
-      id: 1,
-      name: "Morning Meditation",
-      type: "Binary",
-      streak: 1,
-      completed: true,
-      icon: "🧘‍♂️",
-      color: "emerald"
-    },
-    {
-      id: 2,
-      name: "Reading",
-      type: "Time-based",
-      goal: 30,
-      current: 25,
-      unit: "minutes",
-      progress: 83,
-      completed: false,
-      icon: "📚",
-      color: "blue"
-    },
-    {
-      id: 3,
-      name: "Weekly Workouts",
-      type: "Goal-oriented",
-      weeklyGoal: 4,
-      current: 0,
-      unit: "workouts",
-      progress: 0,
-      completed: false,
-      icon: "💪",
-      color: "orange"
-    },
-    {
-      id: 4,
-      name: "Water Intake",
-      type: "Goal-oriented",
-      dailyGoal: 8,
-      current: 5,
-      unit: "glasses",
-      progress: 62.5,
-      completed: false,
-      icon: "💧",
-      color: "cyan"
-    }
-  ]);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedHabit, setSelectedHabit] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [habits, setHabits] = useState([]);
+
+  // Development helper - remove in production
+  const setTestAuth = () => {
+    const testToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGQwZWVhZDI1MjljZDczNDc3ZGE4NDAiLCJpYXQiOjE3NTg1MjMyNTksImV4cCI6MTc1ODYwOTY1OX0.Hjad2MFqt4Xs-twTGKwRP1fOp7cy_oRgqdmoDyHRJ2k";
+    const testUser = { name: "Test User", email: "test@example.com", username: "testuser" };
+    localStorage.setItem('authToken', testToken);
+    localStorage.setItem('userProfile', JSON.stringify(testUser));
+    window.location.reload();
+  };
 
   // Calculate stats dynamically
   const overallStats = React.useMemo(() => {
@@ -75,6 +48,44 @@ const Home = () => {
 
     return () => clearInterval(timer);
   }, []);
+
+  // Load habits and user data from API
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Only load data if user is authenticated
+        if (!authenticated || !token) {
+          setError('Please log in to view your habits.');
+          setLoading(false);
+          return;
+        }
+        
+        // User information is now handled by AuthContext
+        
+        // Load habits
+        const habitsResponse = await habitAPI.getAllHabits();
+        if (habitsResponse.success && habitsResponse.data) {
+          setHabits(habitsResponse.data);
+        } else {
+          setError('Failed to load habits. Please try again.');
+        }
+      } catch (err) {
+        console.error('Error loading data:', err);
+        if (err.response?.status === 401) {
+          setError('Authentication expired. Please log in again.');
+        } else {
+          setError('Failed to load habits. Please try refreshing the page.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [authenticated, token]);
 
   const formatDate = (date) => {
     const options = { 
@@ -120,7 +131,7 @@ const Home = () => {
     return colors[color]?.[variant] || '';
   };
 
-  const updateHabit = (habitId, field, value) => {
+  const updateHabitWithDelay = React.useCallback((habitId, field, value) => {
     setHabits(prev => prev.map(habit => {
       if (habit.id === habitId) {
         const updatedHabit = { ...habit, [field]: value };
@@ -140,13 +151,17 @@ const Home = () => {
       }
       return habit;
     }));
+  }, []);
+
+  const updateHabit = (habitId, field, value) => {
+    updateHabitWithDelay(habitId, field, value);
   };
 
   const addTime = (habitId, minutes) => {
     const habit = habits.find(h => h.id === habitId);
-    if (habit) {
-      const newCurrent = Math.min(habit.current + minutes, habit.goal);
-      const newProgress = (newCurrent / habit.goal) * 100;
+    if (habit && habit.goal) {
+      const newCurrent = Math.min((habit.current || 0) + minutes, habit.goal);
+      const newProgress = Math.round((newCurrent / habit.goal) * 100);
       updateHabit(habitId, 'current', newCurrent);
       updateHabit(habitId, 'progress', newProgress);
     }
@@ -155,32 +170,156 @@ const Home = () => {
   const addCount = (habitId, count) => {
     const habit = habits.find(h => h.id === habitId);
     if (habit) {
-      const newCurrent = habit.current + count;
+      const newCurrent = (habit.current || 0) + count;
       const goalField = habit.weeklyGoal ? 'weeklyGoal' : 'dailyGoal';
-      const newProgress = (newCurrent / habit[goalField]) * 100;
-      updateHabit(habitId, 'current', newCurrent);
-      updateHabit(habitId, 'progress', Math.min(newProgress, 100));
+      const goalValue = habit[goalField];
+      if (goalValue) {
+        const newProgress = Math.round((newCurrent / goalValue) * 100);
+        updateHabit(habitId, 'current', newCurrent);
+        updateHabit(habitId, 'progress', Math.min(newProgress, 100));
+      }
     }
   };
 
-  const handleAddHabit = (habitData) => {
-    setHabits(prev => [...prev, habitData]);
+  const handleAddHabit = async (habitData) => {
+    try {
+      if (!authenticated || !token) {
+        setError('Please log in to create habits.');
+        return;
+      }
+
+      const response = await habitAPI.createHabit(habitData);
+      if (response.success && response.data) {
+        setHabits(prev => [...prev, response.data]);
+      } else {
+        setError('Failed to create habit. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error creating habit:', err);
+      if (err.response?.status === 401) {
+        setError('Authentication expired. Please log in again.');
+      } else {
+        setError('Failed to create habit. Please try again.');
+      }
+    }
   };
 
-  const handleDeleteHabit = (habitId) => {
-    setHabits(prev => prev.filter(h => h.id !== habitId));
+  const handleEditHabit = async (habitId, updatedData) => {
+    try {
+      if (!authenticated || !token) {
+        setError('Please log in to edit habits.');
+        return;
+      }
+
+      const response = await habitAPI.updateHabit(habitId, updatedData);
+      if (response.success && response.data) {
+        setHabits(prev => prev.map(habit => 
+          habit.id === habitId ? { ...habit, ...response.data } : habit
+        ));
+      } else {
+        setError('Failed to update habit. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error updating habit:', err);
+      if (err.response?.status === 401) {
+        setError('Authentication expired. Please log in again.');
+      } else {
+        setError('Failed to update habit. Please try again.');
+      }
+    }
+  };
+
+  const handleDeleteHabit = async (habitId) => {
+    try {
+      if (!authenticated || !token) {
+        setError('Please log in to delete habits.');
+        return;
+      }
+
+      const response = await habitAPI.deleteHabit(habitId);
+      if (response.success) {
+        setHabits(prev => prev.filter(h => h.id !== habitId));
+      } else {
+        setError('Failed to delete habit. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error deleting habit:', err);
+      if (err.response?.status === 401) {
+        setError('Authentication expired. Please log in again.');
+      } else {
+        setError('Failed to delete habit. Please try again.');
+      }
+    }
+  };
+
+  const handleEditClick = (habit) => {
+    setSelectedHabit(habit);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDeleteClick = (habit) => {
+    setSelectedHabit(habit);
+    setIsDeleteModalOpen(true);
   };
 
   return (
     <div className="min-h-screen" style={{background: 'var(--color-bg)'}}>
       <div className="container mx-auto px-4 py-8 max-w-7xl">
+        
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p style={{color: 'var(--color-text-muted)'}}>Loading your habits...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+            <p className="text-red-600 dark:text-red-400">{error}</p>
+            <div className="flex gap-2 mt-2">
+              {error.includes('log in') || error.includes('Authentication') ? (
+                <>
+                  <button 
+                    onClick={() => window.location.href = '/login'} 
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Go to Login
+                  </button>
+                  {import.meta.env.DEV && (
+                    <button 
+                      onClick={setTestAuth} 
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Use Test Login
+                    </button>
+                  )}
+                </>
+              ) : (
+                <button 
+                  onClick={() => window.location.reload()} 
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Main Content */}
+        {!loading && (
+          <>
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-4xl font-bold" style={{color: 'var(--color-text)'}}>
-              Good morning, <span className="text-gradient">Jordan!</span>
+              Good morning, <span className="text-gradient">{user?.name || user?.username || 'User'}!</span>
             </h1>
-            <span className="text-3xl animate-bounce">👋</span>
+            <span className="text-3xl">👋</span>
           </div>
           <p className="text-lg" style={{color: 'var(--color-text-muted)'}}>
             {formatDate(currentDate)}
@@ -228,7 +367,7 @@ const Home = () => {
           </h2>
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="btn-glass px-6 py-3 rounded-xl magnetic micro-bounce"
+            className="btn-glass px-6 py-3 rounded-xl"
           >
             <span className="flex items-center gap-2">
               <span className="text-xl">➕</span>
@@ -239,8 +378,8 @@ const Home = () => {
 
         {/* Habits Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {habits.map((habit) => (
-            <div key={habit.id} className="card-floating magnetic micro-bounce hover-lift">
+          {habits.map((habit, index) => (
+            <div key={habit.id || habit._id || `habit-${index}`} className="card-static">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className={`w-12 h-12 rounded-xl ${getColorClasses(habit.color, 'light')} flex items-center justify-center text-xl`}>
@@ -261,13 +400,22 @@ const Home = () => {
                     </div>
                   </div>
                 </div>
-                <button 
-                  onClick={() => handleDeleteHabit(habit.id)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors group"
-                  title="Delete habit"
-                >
-                  <span className="text-gray-400 group-hover:text-red-500 transition-colors">🗑️</span>
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => handleEditClick(habit)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors group"
+                    title="Edit habit"
+                  >
+                    <span className="text-gray-400 group-hover:text-blue-500 transition-colors">✏️</span>
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteClick(habit)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors group"
+                    title="Delete habit"
+                  >
+                    <span className="text-gray-400 group-hover:text-red-500 transition-colors">🗑️</span>
+                  </button>
+                </div>
               </div>
 
               {/* Binary Habit */}
@@ -292,10 +440,10 @@ const Home = () => {
               {habit.type === 'Time-based' && (
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm" style={{color: 'var(--color-text-muted)'}}>Goal: {habit.goal} {habit.unit}</span>
+                    <span className="text-sm" style={{color: 'var(--color-text-muted)'}}>Goal: {habit.goal} {habit.unit || 'units'}</span>
                     <div className="flex items-center gap-2">
                       <div className={`w-12 h-12 rounded-full border-4 ${getColorClasses(habit.color, 'border')} flex items-center justify-center relative`}>
-                        <span className="text-sm font-bold" style={{color: 'var(--color-text)'}}>{habit.progress}%</span>
+                        <span className="text-sm font-bold" style={{color: 'var(--color-text)'}}>{Math.round(habit.progress || 0)}%</span>
                         <svg className="absolute inset-0 w-12 h-12 transform -rotate-90">
                           <circle
                             cx="24"
@@ -315,13 +463,13 @@ const Home = () => {
                             strokeWidth="4"
                             fill="none"
                             strokeDasharray={`${2 * Math.PI * 20}`}
-                            strokeDashoffset={`${2 * Math.PI * 20 * (1 - habit.progress / 100)}`}
+                            strokeDashoffset={`${2 * Math.PI * 20 * (1 - (habit.progress || 0) / 100)}`}
                             className={getColorClasses(habit.color, 'primary')}
                             style={{transition: 'stroke-dashoffset 0.5s ease'}}
                           />
                         </svg>
                       </div>
-                      <span className="text-lg font-semibold" style={{color: 'var(--color-text)'}}>{habit.current} {habit.unit}</span>
+                      <span className="text-lg font-semibold" style={{color: 'var(--color-text)'}}>{habit.current || 0} {habit.unit || 'units'}</span>
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -353,7 +501,7 @@ const Home = () => {
                   <div className="mb-4">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm" style={{color: 'var(--color-text-muted)'}}>
-                        {habit.weeklyGoal ? `Weekly goal: ${habit.weeklyGoal}` : `Daily goal: ${habit.dailyGoal}`} {habit.unit}
+                        {habit.weeklyGoal ? `Weekly goal: ${habit.weeklyGoal}` : `Daily goal: ${habit.dailyGoal}`} {habit.unit || 'items'}
                       </span>
                       <span className="text-sm font-medium" style={{color: 'var(--color-text)'}}>
                         {habit.current}/{habit.weeklyGoal || habit.dailyGoal}
@@ -362,7 +510,7 @@ const Home = () => {
                     
                     {habit.current === 0 ? (
                       <div className="text-right mb-2">
-                        <span className="text-2xl font-bold" style={{color: 'var(--color-text)'}}>{habit.current} {habit.unit}</span>
+                        <span className="text-2xl font-bold" style={{color: 'var(--color-text)'}}>{habit.current || 0} {habit.unit || 'items'}</span>
                       </div>
                     ) : (
                       <div className="flex items-center justify-between mb-2">
@@ -387,14 +535,14 @@ const Home = () => {
                               strokeWidth="4"
                               fill="none"
                               strokeDasharray={`${2 * Math.PI * 28}`}
-                              strokeDashoffset={`${2 * Math.PI * 28 * (1 - habit.progress / 100)}`}
+                              strokeDashoffset={`${2 * Math.PI * 28 * (1 - (habit.progress || 0) / 100)}`}
                               className={getColorClasses(habit.color, 'primary')}
                               style={{transition: 'stroke-dashoffset 0.5s ease'}}
                             />
                           </svg>
                         </div>
                         <div className="text-right">
-                          <div className="text-2xl font-bold" style={{color: 'var(--color-text)'}}>{habit.current} {habit.unit}</div>
+                          <div className="text-2xl font-bold" style={{color: 'var(--color-text)'}}>{habit.current || 0} {habit.unit || 'items'}</div>
                         </div>
                       </div>
                     )}
@@ -402,11 +550,11 @@ const Home = () => {
                   
                   <button 
                     onClick={() => addCount(habit.id, 1)}
-                    className={`w-full py-3 rounded-xl ${getColorClasses(habit.color, 'bg')} text-white font-medium hover:opacity-90 transition-all duration-200 magnetic micro-bounce`}
+                    className={`w-full py-3 rounded-xl ${getColorClasses(habit.color, 'bg')} text-white font-medium hover:opacity-90 transition-all duration-200`}
                   >
                     <span className="flex items-center justify-center gap-2">
                       <span className="text-lg">➕</span>
-                      +1 {habit.unit.slice(0, -1)}
+                      +1 {habit.unit ? habit.unit.slice(0, -1) : 'item'}
                     </span>
                   </button>
                 </div>
@@ -415,11 +563,28 @@ const Home = () => {
           ))}
         </div>
 
-        {/* Habit Modal */}
+        </>
+        )}
+
+        {/* Modals */}
         <HabitModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onSubmit={handleAddHabit}
+        />
+        
+        <EditHabitModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSubmit={handleEditHabit}
+          habit={selectedHabit}
+        />
+        
+        <DeleteHabitModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={handleDeleteHabit}
+          habit={selectedHabit}
         />
       </div>
     </div>
