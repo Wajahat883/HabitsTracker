@@ -141,69 +141,184 @@ const Login = ({ onSuccess }) => {
   const handleGoogleError = () => showToast('Google Login Failed', 'error');
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row items-stretch bg-[var(--color-bg)]">
-      {toast.show && <Toast message={toast.message} type={toast.type} />}
-      {streakPopup && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50 animate-fadein">
-          <div className="card bg-white text-[var(--color-bg)] p-8 rounded-xl shadow-xl text-center max-w-xs w-full">
-            <h3 className="text-xl font-bold mb-2">Welcome Back!</h3>
-            <p className="mb-2">Current streak: <span className="font-bold text-blue-500">{userStreak} days</span></p>
-            <p className="text-3xl">🔥</p>
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-neutral-50 to-blue-50 dark:from-slate-900 dark:via-blue-900 dark:to-slate-900">
+      {/* Animated Background */}
+      <div className="fixed inset-0 animate-gradient">
+        <div className="absolute inset-0 bg-gradient-to-br from-neutral-50 via-blue-50 to-neutral-100 dark:from-slate-900 dark:via-blue-900 dark:to-slate-900"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-blue-100/30 via-transparent to-purple-100/30 dark:from-purple-900/30 dark:via-transparent dark:to-blue-900/30"></div>
+        <div className="absolute inset-0 backdrop-blur-3xl"></div>
+      </div>
+
+      {/* Floating Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-200/20 dark:bg-blue-500/10 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-200/20 dark:bg-purple-500/10 rounded-full blur-3xl animate-float" style={{animationDelay: '1s'}}></div>
+      </div>
+
+      {toast.show && (
+        <div className="fixed top-8 right-8 z-50 animate-slide-up">
+          <div className={`glass-morphism px-6 py-4 rounded-2xl border-l-4 ${toast.type === 'success' ? 'border-emerald-400 text-emerald-400' : 'border-red-400 text-red-400'}`}>
+            <div className="flex items-center gap-3">
+              <span className="text-xl">{toast.type === 'success' ? '✅' : '❌'}</span>
+              <span className="font-medium text-white">{toast.message}</span>
+            </div>
           </div>
         </div>
       )}
-      {/* Left: Form */}
-      <div className="flex-1 flex items-center justify-center py-12 px-4 md:px-8 bg-[var(--color-bg)]">
-        <div className="card w-full max-w-md p-8 md:p-10 relative animate-fadein">
-          <h2 className="text-2xl font-extrabold text-center mb-6 text-blue-400">Welcome Back</h2>
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="login-email">Email</label>
-              <input id="login-email" type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required className="input w-full" placeholder="you@example.com" autoFocus />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="login-password">Password</label>
-              <div className="relative">
-                <input id="login-password" type={showPassword? 'text':'password'} value={password} onChange={(e)=>setPassword(e.target.value)} required className="input w-full pr-12" placeholder="••••••••" />
-                <button type="button" onClick={()=>setShowPassword(s=>!s)} className="absolute inset-y-0 right-2 px-2 flex items-center text-muted hover:text-blue-400 text-xs font-medium tracking-wide" tabIndex={-1} aria-label="Toggle password visibility">
-                  {showPassword ? 'Hide' : 'Show'}
+
+      {streakPopup && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 animate-fadein">
+          <div className="glass-morphism p-8 rounded-3xl shadow-2xl text-center max-w-sm w-full mx-4 animate-pop">
+            <div className="text-6xl mb-4 animate-bounce-in">🔥</div>
+            <h3 className="text-2xl font-bold text-white mb-2">Welcome Back!</h3>
+            <p className="text-neutral-300 mb-4">
+              Your streak: <span className="text-gradient font-bold text-xl">{userStreak} days</span>
+            </p>
+            <div className="text-neutral-400 text-sm">Keep the momentum going!</div>
+          </div>
+        </div>
+      )}
+
+      <div className="relative z-10 min-h-screen flex flex-col lg:flex-row">
+        {/* Left: Form Section */}
+        <div className="flex-1 flex items-center justify-center p-8 lg:p-12">
+          <div className="w-full max-w-md">
+            <div className="glass-morphism rounded-3xl p-8 lg:p-10 animate-fadein-left" style={{background: 'var(--glass-bg)', border: '1px solid var(--glass-border)'}}>
+              {/* Header */}
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-2 text-shadow">
+                  Welcome <span className="text-gradient">Back</span>
+                </h2>
+                <p className="text-slate-600 dark:text-neutral-400">Sign in to continue your habit journey</p>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleLogin} className="space-y-6">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="login-email">
+                    Email Address
+                  </label>
+                  <input 
+                    id="login-email" 
+                    type="email" 
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)} 
+                    required 
+                    className="form-input focus-ring" 
+                    placeholder="Enter your email"
+                    autoFocus 
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="login-password">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input 
+                      id="login-password" 
+                      type={showPassword ? 'text' : 'password'} 
+                      value={password} 
+                      onChange={(e) => setPassword(e.target.value)} 
+                      required 
+                      className="form-input focus-ring pr-12" 
+                      placeholder="Enter your password" 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPassword(s => !s)} 
+                      className="absolute inset-y-0 right-3 flex items-center text-neutral-400 hover:text-blue-400 transition-colors duration-200"
+                      tabIndex={-1}
+                    >
+                      <span className="text-sm font-medium">
+                        {showPassword ? '🙈' : '👁️'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="w-4 h-4 rounded border-slate-300 dark:border-neutral-600 bg-transparent focus:ring-blue-500" />
+                    <span className="text-sm text-slate-600 dark:text-neutral-300">Remember me</span>
+                  </label>
+                  <a href="#" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
+                    Forgot password?
+                  </a>
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={loading} 
+                  className="btn w-full py-4 text-lg font-semibold hover-lift focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <div className="flex items-center justify-center gap-3">
+                      <Loader />
+                      <span>Signing in...</span>
+                    </div>
+                  ) : (
+                    <span className="flex items-center justify-center gap-3">
+                      <span>🚀</span>
+                      Sign In
+                    </span>
+                  )}
                 </button>
+              </form>
+
+              {/* Divider */}
+              <div className="flex items-center my-8">
+                <div className="flex-1 h-px bg-slate-300 dark:bg-neutral-700"></div>
+                <span className="mx-4 text-sm text-slate-500 dark:text-neutral-400">or continue with</span>
+                <div className="flex-1 h-px bg-slate-300 dark:bg-neutral-700"></div>
+              </div>
+
+              {/* Google Login */}
+              <GoogleLoginButton onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
+
+              {/* Footer */}
+              <p className="mt-8 text-center text-slate-600 dark:text-neutral-400">
+                Don't have an account?{' '}
+                <a href="/signup" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors font-medium">
+                  Create one
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Feature Section */}
+        <div className="hidden lg:flex flex-1 items-center justify-center p-12">
+          <div className="max-w-lg text-center animate-fadein-up">
+            <div className="glass-morphism rounded-3xl p-10" style={{background: 'var(--glass-bg)', border: '1px solid var(--glass-border)'}}>
+              <div className="text-6xl mb-6 animate-float">🎯</div>
+              <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-4 text-shadow">
+                Build <span className="text-gradient">Better Habits</span>
+              </h2>
+              <p className="text-lg text-slate-600 dark:text-neutral-300 mb-8 leading-relaxed">
+                Track your progress, stay motivated with streaks, and transform your life 
+                one habit at a time with our intelligent tracking system.
+              </p>
+
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                {[
+                  { icon: '📊', title: 'Smart Analytics', desc: 'AI-powered insights' },
+                  { icon: '🔥', title: 'Streak Tracking', desc: 'Build momentum' },
+                  { icon: '👥', title: 'Social Features', desc: 'Stay accountable' },
+                  { icon: '🏆', title: 'Achievements', desc: 'Celebrate wins' }
+                ].map((feature, index) => (
+                  <div key={index} className="glass-morphism rounded-2xl p-4 hover-lift" style={{animationDelay: `${index * 100}ms`, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)'}}>
+                    <div className="text-2xl mb-2">{feature.icon}</div>
+                    <h4 className="font-semibold text-slate-800 dark:text-white text-sm mb-1">{feature.title}</h4>
+                    <p className="text-xs text-slate-600 dark:text-neutral-400">{feature.desc}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-sm text-slate-500 dark:text-neutral-400">
+                Join <span className="text-blue-600 dark:text-blue-400 font-bold">10,000+</span> users already transforming their lives
               </div>
             </div>
-            <div className="flex items-center justify-between text-xs">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" className="rounded border-[var(--color-border)]" />
-                <span className="muted">Remember me</span>
-              </label>
-              <a href="#" className="text-blue-400 hover:underline">Forgot Password?</a>
-            </div>
-            <button type="submit" disabled={loading} className="btn w-full flex items-center justify-center">
-              {loading ? <Loader /> : 'Sign In'}
-            </button>
-          </form>
-          <div className="flex items-center my-6">
-            <div className="flex-1 h-px bg-[var(--color-border)]" />
-            <span className="mx-3 text-xs text-muted">OR</span>
-            <div className="flex-1 h-px bg-[var(--color-border)]" />
-          </div>
-          <GoogleLoginButton onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
-          <p className="mt-8 text-center text-sm text-muted">No account? <a href="/signup" className="text-blue-400 hover:underline">Create one</a></p>
-        </div>
-      </div>
-      {/* Right: Feature/Branding */}
-      <div className="hidden md:flex flex-col justify-center items-center flex-1 bg-gradient-to-br from-blue-900/60 to-blue-700/40 relative overflow-hidden">
-        <div className="feature-badge mb-6"><span>Habit Insight Engine</span></div>
-        <div className="space-y-7 relative z-10 max-w-md px-8">
-          <h2 className="text-3xl font-extrabold text-white mb-2">Build Better Habits</h2>
-          <p className="text-base leading-relaxed text-slate-200">Track, analyze and sustain your routines with real‑time streaks, motivational insights and a social layer that keeps you accountable.</p>
-          <div className="glass-tile p-5 rounded-xl shadow-lg">
-            <h4 className="text-sm font-semibold tracking-wide uppercase text-blue-200 mb-2">Why Join?</h4>
-            <ul className="text-xs space-y-2 text-slate-100/90">
-              <li>• Smart streak tracking with tolerance</li>
-              <li>• Social progress & friend presence</li>
-              <li>• Year heat map & habit insights</li>
-              <li>• Fast theme switching</li>
-            </ul>
           </div>
         </div>
       </div>

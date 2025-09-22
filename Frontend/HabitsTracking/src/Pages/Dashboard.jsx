@@ -242,7 +242,7 @@ const Dashboard = () => {
   // ---- Derived Dashboard Metrics ----
 
   return (
-    <div className="p-6 md:p-10 min-h-screen bg-gray-50 overflow-y-auto animate-fadein">
+    <div className="p-6 md:p-10 min-h-screen overflow-y-auto animate-fadein" style={{background: 'var(--color-bg)'}}>
       {editingArea && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fadein" onClick={(e)=> { if(e.target===e.currentTarget) cancelAreaEdit(); }}>
           <div className="card w-full max-w-sm p-5 relative animate-pop">
@@ -282,7 +282,7 @@ const Dashboard = () => {
       {/* Habit Form Modal */}
       {showHabitForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fadein" onClick={(e)=> { if(e.target===e.currentTarget) setShowHabitForm(false); }}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" style={{background: 'var(--glass-bg)', border: '1px solid var(--glass-border)'}}>
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-gray-800">Create New Habit</h3>
               <button 
@@ -310,10 +310,10 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               
               {/* Chart 1: My Progress */}
-              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+              <div className="rounded-xl shadow-lg p-6" style={{background: 'var(--glass-bg)', border: '1px solid var(--glass-border)'}}>
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-gray-800">My Progress</h3>
-                  <div className="text-sm text-gray-500">Last 7 days</div>
+                  <h3 className="text-lg font-semibold" style={{color: 'var(--color-text)'}}>My Progress</h3>
+                  <div className="text-sm" style={{color: 'var(--color-text-muted)'}}>Last 7 days</div>
                 </div>
                 <div className="h-64">
                   <Bar 
@@ -344,9 +344,9 @@ const Dashboard = () => {
               </div>
 
               {/* Chart 2: Selected Friend's Progress */}
-              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+              <div className="rounded-xl shadow-lg p-6" style={{background: 'var(--glass-bg)', border: '1px solid var(--glass-border)'}}>
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-gray-800">Friend's Progress</h3>
+                  <h3 className="text-lg font-semibold" style={{color: 'var(--color-text)'}}>Friend's Progress</h3>
                   <select 
                     value={selectedFriend?._id || ''} 
                     onChange={(e) => {
@@ -400,10 +400,10 @@ const Dashboard = () => {
               </div>
 
               {/* Chart 3: Comparison Chart */}
-              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+              <div className="rounded-xl shadow-lg p-6" style={{background: 'var(--glass-bg)', border: '1px solid var(--glass-border)'}}>
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-gray-800">You vs Friend</h3>
-                  <div className="text-sm text-gray-500">
+                  <h3 className="text-lg font-semibold" style={{color: 'var(--color-text)'}}>You vs Friend</h3>
+                  <div className="text-sm" style={{color: 'var(--color-text-muted)'}}>
                     {selectedFriend ? `vs ${selectedFriend.username || selectedFriend.name}` : 'Select friend above'}
                   </div>
                 </div>
@@ -436,10 +436,10 @@ const Dashboard = () => {
               </div>
 
               {/* Chart 4: All Friends Progress */}
-              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+              <div className="rounded-xl shadow-lg p-6" style={{background: 'var(--glass-bg)', border: '1px solid var(--glass-border)'}}>
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-gray-800">All Friends Progress</h3>
-                  <div className="text-sm text-gray-500">{uniqueFriends.length} friends</div>
+                  <h3 className="text-lg font-semibold" style={{color: 'var(--color-text)'}}>All Friends Progress</h3>
+                  <div className="text-sm" style={{color: 'var(--color-text-muted)'}}>{uniqueFriends.length} friends</div>
                 </div>
                 <div className="h-64">
                   {friendsProgress.length > 0 ? (

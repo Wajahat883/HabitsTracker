@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logoImage from '../assets/logo-habit-tracker.png';
 import bookImage from '../assets/book.jpeg';
@@ -7,189 +7,259 @@ import horseRidingImage from '../assets/horse riding.jpeg';
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const [isVisible, setIsVisible] = useState({});
+
+  useEffect(() => {
+    // Stagger animations on load
+    const timeouts = [];
+    ['hero', 'features', 'benefits', 'cta'].forEach((section, index) => {
+      const timeout = setTimeout(() => {
+        setIsVisible(prev => ({...prev, [section]: true}));
+      }, index * 200);
+      timeouts.push(timeout);
+    });
+
+    return () => timeouts.forEach(clearTimeout);
+  }, []);
 
   const features = [
     {
       title: "Build Better Habits",
-      description: "Transform your life one habit at a time with our intuitive tracking system",
+      description: "Transform your life one habit at a time with our AI-powered tracking system",
       icon: "🎯",
-      image: bookImage
+      image: bookImage,
+      gradient: "from-blue-500 to-indigo-600"
     },
     {
       title: "Stay Motivated",
-      description: "Visual progress tracking and streaks keep you motivated every single day",
+      description: "Dynamic progress tracking and intelligent streaks keep you motivated every day",
       icon: "📈",
-      image: cyclingImage
+      image: cyclingImage,
+      gradient: "from-emerald-500 to-teal-600"
     },
     {
-      title: "Track Your Progress",
-      description: "Modern analytics help you understand your patterns and celebrate victories",
+      title: "Track Progress",
+      description: "Advanced analytics and insights help you understand patterns and celebrate wins",
       icon: "🏆",
-      image: horseRidingImage
+      image: horseRidingImage,
+      gradient: "from-purple-500 to-pink-600"
     }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
-      {/* Hero Section */}
-      <div className="container mx-auto px-6 py-16">
-        <div className="text-center mb-16">
-          <div className="flex justify-center mb-8">
-            <img 
-              src={logoImage} 
-              alt="Habit Tracker Logo" 
-              className="w-32 h-32 md:w-40 md:h-40 object-contain drop-shadow-lg"
-            />
-          </div>
-          
-          <h1 className="text-4xl md:text-6xl font-bold text-slate-800 dark:text-white mb-6">
-            Transform Your Life with
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-              {" "}Better Habits
-            </span>
-          </h1>
-          
-          <p className="text-xl md:text-2xl text-slate-600 dark:text-slate-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Build lasting habits, track your progress, and achieve your goals with our intuitive habit tracking platform. 
-            Start your journey to a better you today!
-          </p>
+    <div className="min-h-screen relative overflow-hidden" style={{background: 'var(--gradient-bg)'}}>
+      {/* Animated Background */}
+      <div className="fixed inset-0 animate-gradient">
+        <div className="absolute inset-0" style={
+          {background: 'var(--gradient-bg)'}
+          }></div>
+        <div className="absolute inset-0" style={{background: 'var(--gradient-accent)', opacity: 0.1}}></div>
+        <div className="absolute inset-0 backdrop-blur-3xl"></div>
+      </div>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-            <button
-              onClick={() => navigate('/signup')}
-              className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-lg"
-            >
-              🚀 Start Tracking Free
-            </button>
-            <button
-              onClick={() => navigate('/login')}
-              className="px-8 py-4 border-2 border-blue-600 text-blue-600 dark:text-blue-400 font-semibold rounded-xl hover:bg-blue-600 hover:text-white dark:border-blue-400 dark:hover:bg-blue-400 dark:hover:text-slate-900 transition-all duration-300 text-lg"
-            >
-              Already have an account? Login
-            </button>
-          </div>
-        </div>
+      {/* Floating Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full blur-3xl animate-float" style={{background: 'var(--color-primary)', opacity: 0.1}}></div>
+        <div className="absolute top-3/4 right-1/4 w-80 h-80 rounded-full blur-3xl animate-float" style={{background: 'var(--color-accent)', opacity: 0.1, animationDelay: '1s'}}></div>
+        <div className="absolute top-1/2 left-3/4 w-72 h-72 rounded-full blur-3xl animate-float" style={{background: 'var(--color-success)', opacity: 0.1, animationDelay: '2s'}}></div>
+      </div>
 
-        {/* Features Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
-          {features.map((feature, index) => (
-            <div 
-              key={index}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group"
-            >
-              <div className="h-48 overflow-hidden">
+      <div className="relative z-10">
+        <div className="container mx-auto px-6 py-20">
+          {/* Hero Section */}
+          <div className={`text-center mb-20 transform transition-all duration-1000 ${isVisible.hero ? 'animate-fadein-up' : 'opacity-0 translate-y-20'}`}>
+            <div className="flex justify-center mb-8">
+              <div className="relative group">
+                <div className="absolute inset-0 rounded-full blur opacity-75 group-hover:opacity-100 transition duration-300" style={{background: 'var(--gradient-primary)'}}></div>
                 <img 
-                  src={feature.image} 
-                  alt={feature.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  src={logoImage} 
+                  alt="Habit Tracker Logo" 
+                  className="relative w-32 h-32 md:w-48 md:h-48 object-contain animate-float"
                 />
               </div>
-              <div className="p-6">
-                <div className="text-4xl mb-3">{feature.icon}</div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-3">
-                  {feature.title}
-                </h3>
-                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                  {feature.description}
-                </p>
-              </div>
             </div>
-          ))}
-        </div>
-
-        {/* Benefits Section */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-8 md:p-12">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-800 dark:text-white mb-4">
-              Why Habit Tracking Works
-            </h2>
-            <p className="text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">
-              Science-backed approach to building lasting positive changes in your life
+            
+            <h1 className="text-display mb-6 text-shadow-lg">
+              <span className="text-morph">Transform Your Life with</span>
+              <br />
+              <span className="text-glow animate-gradient">Better Habits</span>
+            </h1>
+            
+            <p className="text-lead mb-12 max-w-4xl mx-auto leading-relaxed" style={{color: 'var(--color-text-light)'}}>
+              Build lasting habits, track your progress with advanced analytics, and achieve your goals with our 
+              <span className="text-blue-600 dark:text-blue-400 font-semibold"> AI-powered </span>
+              habit tracking platform. Start your transformation today!
             </p>
-          </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-2xl">✅</span>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-slate-800 dark:text-white mb-2">Visual Progress</h4>
-                  <p className="text-slate-600 dark:text-slate-300">See your streaks and patterns at a glance</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-2xl">📊</span>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-slate-800 dark:text-white mb-2">Smart Analytics</h4>
-                  <p className="text-slate-600 dark:text-slate-300">Understand your behavior patterns</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-2xl">🎯</span>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-slate-800 dark:text-white mb-2">Goal Focused</h4>
-                  <p className="text-slate-600 dark:text-slate-300">Set clear, achievable targets</p>
-                </div>
-              </div>
+            {/* Modern CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
+              <button
+                onClick={() => navigate('/signup')}
+                className="btn btn-xl magnetic micro-bounce particle-system"
+              >
+                <span className="relative z-10 flex items-center gap-3">
+                  <span className="text-2xl morphing-blob">🚀</span>
+                  Start Your Journey
+                </span>
+              </button>
+              <button
+                onClick={() => navigate('/login')}
+                className="btn-neon btn-lg magnetic micro-bounce"
+              >
+                <span className="flex items-center gap-3">
+                  <span className="text-xl">👋</span>
+                  Welcome Back
+                </span>
+              </button>
             </div>
 
-            <div className="space-y-6">
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-2xl">⚡</span>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-slate-800 dark:text-white mb-2">Daily Motivation</h4>
-                  <p className="text-slate-600 dark:text-slate-300">Stay inspired with progress updates</p>
-                </div>
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto">
+              <div className="card-floating magnetic particle-system">
+                <div className="text-3xl font-bold mb-2 text-shimmer" style={{color: 'var(--color-primary)'}}>10K+</div>
+                <div style={{color: 'var(--color-text-muted)'}}>Active Users</div>
               </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-2xl">🔥</span>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-slate-800 dark:text-white mb-2">Streak Building</h4>
-                  <p className="text-slate-600 dark:text-slate-300">Build momentum with consecutive days</p>
-                </div>
+              <div className="card-3d magnetic particle-system">
+                <div className="text-3xl font-bold mb-2 text-shimmer" style={{color: 'var(--color-success)'}}>1M+</div>
+                <div style={{color: 'var(--color-text-muted)'}}>Habits Tracked</div>
               </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-2xl">🌟</span>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-slate-800 dark:text-white mb-2">Personal Growth</h4>
-                  <p className="text-slate-600 dark:text-slate-300">Transform your lifestyle step by step</p>
-                </div>
+              <div className="card-neon magnetic particle-system">
+                <div className="text-3xl font-bold mb-2" style={
+                  {color: 'var(--color-accent)'}
+                  }>95%</div>
+                <div style={{color: 'var(--color-text-muted)'}}>Success Rate</div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Final CTA */}
-        <div className="text-center mt-16">
-          <h3 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white mb-4">
-            Ready to Start Your Journey?
-          </h3>
-          <p className="text-lg text-slate-600 dark:text-slate-300 mb-8">
-            Join thousands of users who have transformed their lives through better habits
-          </p>
-          <button
-            onClick={() => navigate('/signup')}
-            className="px-10 py-4 bg-gradient-to-r from-green-500 to-blue-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-xl"
-          >
-            Get Started Now - It's Free! 🎉
-          </button>
+          {/* Modern Features Grid */}
+          <div className={`grid md:grid-cols-3 gap-8 mb-20 transform transition-all duration-1000 delay-300 ${isVisible.features ? 'animate-fadein-up' : 'opacity-0 translate-y-20'}`}>
+            {features.map((feature, index) => (
+              <div 
+                key={index}
+                className="relative group overflow-hidden"
+                style={{animationDelay: `${index * 150}ms`}}
+              >
+                {/* Card Background with Glassmorphism */}
+                <div className="card-liquid magnetic micro-bounce">
+                  {/* Gradient Overlay */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500 rounded-3xl`}></div>
+                  
+                  {/* Content */}
+                  <div className="relative z-10">
+                    <div className="w-20 h-20 mx-auto mb-6 rounded-2xl backdrop-blur-sm flex items-center justify-center text-4xl animate-float group-hover:animate-bounce-in" style={{background: 'var(--glass-bg)', border: '1px solid var(--glass-border)'}}>
+                      {feature.icon}
+                    </div>
+                    
+                    <h3 className="text-2xl font-bold mb-4 text-center group-hover:text-gradient transition-all duration-300" style={{color: 'var(--color-text)'}}>
+                      {feature.title}
+                    </h3>
+                    
+                    <p className="leading-relaxed text-center transition-colors duration-300" style={{color: 'var(--color-text-muted)'}}>
+                      {feature.description}
+                    </p>
+                    
+                    {/* Interactive Element */}
+                    <div className="mt-6 flex justify-center">
+                      <div className={`w-12 h-1 bg-gradient-to-r ${feature.gradient} rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500`}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Modern Benefits Section */}
+          <div className={`card-3d particle-system transform transition-all duration-1000 delay-600 ${isVisible.benefits ? 'animate-fadein-up' : 'opacity-0 translate-y-20'}`}>
+            <div className="text-center mb-12">
+              <h2 className="text-4xl md:text-5xl font-bold mb-6 text-shadow-lg text-shimmer" style={{color: 'var(--color-text)'}}>
+                Why Habit Tracking
+                <span className="text-gradient"> Actually Works</span>
+              </h2>
+              <p className="text-xl max-w-3xl mx-auto leading-relaxed" style={{color: 'var(--color-text-muted)'}}>
+                Science-backed approach powered by behavioral psychology and advanced analytics 
+                to create lasting positive changes in your life
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[
+                { icon: "📊", title: "Advanced Analytics", desc: "AI-powered insights reveal your behavior patterns and optimal habit timing", color: "from-blue-500 to-cyan-500" },
+                { icon: "🎯", title: "Smart Goals", desc: "Adaptive goal setting that adjusts based on your progress and lifestyle", color: "from-purple-500 to-pink-500" },
+                { icon: "🔥", title: "Streak Power", desc: "Psychological momentum building through gamified streak tracking", color: "from-orange-500 to-red-500" },
+                { icon: "⚡", title: "Instant Feedback", desc: "Real-time progress updates and motivational insights keep you engaged", color: "from-yellow-500 to-orange-500" },
+                { icon: "🌟", title: "Personal Growth", desc: "Transform your identity through consistent small wins and habit stacking", color: "from-emerald-500 to-teal-500" },
+                { icon: "🧠", title: "Neural Rewiring", desc: "Build new neural pathways through consistent repetition and positive reinforcement", color: "from-indigo-500 to-purple-500" }
+              ].map((benefit, index) => (
+                <div 
+                  key={index}
+                  className="group hover-lift"
+                  style={{animationDelay: `${index * 100}ms`}}
+                >
+                  <div className="card-floating magnetic micro-bounce">
+                    <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br ${benefit.color} flex items-center justify-center text-2xl morphing-blob`}>
+                      {benefit.icon}
+                    </div>
+                    <h4 className="font-bold mb-3 text-center text-shimmer transition-all duration-300" style={{color: 'var(--color-text)'}}>
+                      {benefit.title}
+                    </h4>
+                    <p className="text-sm leading-relaxed text-center transition-colors duration-300" style={{color: 'var(--color-text-muted)'}}>
+                      {benefit.desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Final CTA Section */}
+          <div className={`text-center transform transition-all duration-1000 delay-900 ${isVisible.cta ? 'animate-fadein-up' : 'opacity-0 translate-y-20'}`}>
+            <div className="card-neon particle-system max-w-4xl mx-auto">
+              <h3 className="text-4xl md:text-5xl font-bold mb-6 text-shadow-lg text-shimmer" style={{color: 'var(--color-text)'}}>
+                Ready to 
+                <span className="text-gradient"> Transform Your Life?</span>
+              </h3>
+              <p className="text-xl mb-10 leading-relaxed" style={{color: 'var(--color-text-muted)'}}>
+                Join over <span className="font-bold" style={{color: 'var(--color-primary)'}}>10,000+ users</span> who have already 
+                transformed their lives through the power of consistent habits
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+                <button
+                  onClick={() => navigate('/signup')}
+                  className="btn-glass btn-xl magnetic micro-bounce liquid-loader"
+                >
+                  <span className="relative z-10 flex items-center gap-3">
+                    <span className="text-2xl morphing-blob">🎉</span>
+                    Start Free Today
+                  </span>
+                </button>
+                <div className="text-neutral-400 text-sm">
+                  No credit card required • Setup in 30 seconds
+                </div>
+              </div>
+
+              {/* Trust Indicators */}
+              <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-6 opacity-60">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">4.9★</div>
+                  <div className="text-xs text-slate-500 dark:text-neutral-400">App Rating</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">10K+</div>
+                  <div className="text-xs text-slate-500 dark:text-neutral-400">Happy Users</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">1M+</div>
+                  <div className="text-xs text-slate-500 dark:text-neutral-400">Habits Tracked</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">24/7</div>
+                  <div className="text-xs text-slate-500 dark:text-neutral-400">Support</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

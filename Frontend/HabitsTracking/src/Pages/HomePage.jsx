@@ -1,9 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
-import HabitModal from '../Components/Habits/HabitModal';
+import React, { useState, useEffect } from 'react';
 
-const Home = () => {
+const HomePage = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [habits, setHabits] = useState([
     {
       id: 1,
@@ -52,21 +50,18 @@ const Home = () => {
     }
   ]);
 
+  const [_overallStats, _setOverallStats] = useState({
+    completed: 3,
+    total: 4,
+    percentage: 75
+  });
+
   // Calculate stats dynamically
-  const overallStats = React.useMemo(() => {
-    const completedHabits = habits.filter(h => {
-      if (h.type === 'Binary') return h.completed;
-      if (h.type === 'Time-based') return h.progress >= 100;
-      if (h.type === 'Goal-oriented') return h.progress >= 100;
-      return false;
-    });
-    
-    return {
-      completed: completedHabits.length,
-      total: habits.length,
-      percentage: habits.length > 0 ? Math.round((completedHabits.length / habits.length) * 100) : 0
-    };
-  }, [habits]);
+  const overallStats = {
+    completed: habits.filter(h => h.completed || (h.progress && h.progress >= 100)).length,
+    total: habits.length,
+    percentage: Math.round((habits.filter(h => h.completed || (h.progress && h.progress >= 100)).length / habits.length) * 100)
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -121,25 +116,9 @@ const Home = () => {
   };
 
   const updateHabit = (habitId, field, value) => {
-    setHabits(prev => prev.map(habit => {
-      if (habit.id === habitId) {
-        const updatedHabit = { ...habit, [field]: value };
-        
-        // Update streak for binary habits
-        if (field === 'completed' && value === true && habit.type === 'Binary') {
-          updatedHabit.streak = (habit.streak || 0) + 1;
-        }
-        
-        // Auto-complete time-based and goal-oriented habits when they reach 100%
-        if (field === 'progress' && value >= 100 && !habit.completed) {
-          updatedHabit.completed = true;
-          updatedHabit.streak = (habit.streak || 0) + 1;
-        }
-        
-        return updatedHabit;
-      }
-      return habit;
-    }));
+    setHabits(prev => prev.map(habit => 
+      habit.id === habitId ? { ...habit, [field]: value } : habit
+    ));
   };
 
   const addTime = (habitId, minutes) => {
@@ -161,14 +140,6 @@ const Home = () => {
       updateHabit(habitId, 'current', newCurrent);
       updateHabit(habitId, 'progress', Math.min(newProgress, 100));
     }
-  };
-
-  const handleAddHabit = (habitData) => {
-    setHabits(prev => [...prev, habitData]);
-  };
-
-  const handleDeleteHabit = (habitId) => {
-    setHabits(prev => prev.filter(h => h.id !== habitId));
   };
 
   return (
@@ -226,10 +197,7 @@ const Home = () => {
           <h2 className="text-2xl font-bold" style={{color: 'var(--color-text)'}}>
             Today's Habits
           </h2>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="btn-glass px-6 py-3 rounded-xl magnetic micro-bounce"
-          >
+          <button className="btn-glass px-6 py-3 rounded-xl magnetic micro-bounce">
             <span className="flex items-center gap-2">
               <span className="text-xl">➕</span>
               Add Habit
@@ -261,13 +229,6 @@ const Home = () => {
                     </div>
                   </div>
                 </div>
-                <button 
-                  onClick={() => handleDeleteHabit(habit.id)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors group"
-                  title="Delete habit"
-                >
-                  <span className="text-gray-400 group-hover:text-red-500 transition-colors">🗑️</span>
-                </button>
               </div>
 
               {/* Binary Habit */}
@@ -414,16 +375,9 @@ const Home = () => {
             </div>
           ))}
         </div>
-
-        {/* Habit Modal */}
-        <HabitModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSubmit={handleAddHabit}
-        />
       </div>
     </div>
   );
 };
 
-export default Home;
+export default HomePage;

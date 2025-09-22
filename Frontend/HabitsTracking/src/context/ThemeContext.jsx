@@ -4,12 +4,21 @@ const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('theme') || 'dark'; } catch { return 'dark'; }
+    try { 
+      // Auto-detect system preference, fallback to light
+      const saved = localStorage.getItem('theme');
+      if (saved) return saved;
+      return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } catch { 
+      return 'light'; 
+    }
   });
 
   useEffect(()=> {
     const root = document.documentElement;
-    // ensure only our theme classes exist
+    // Apply theme using data attribute
+    root.setAttribute('data-theme', theme);
+    // Also set class for backward compatibility
     root.classList.remove('theme-dark','theme-light');
     root.classList.add(theme === 'light' ? 'theme-light' : 'theme-dark');
     try { localStorage.setItem('theme', theme); } catch { /* ignore */ }
