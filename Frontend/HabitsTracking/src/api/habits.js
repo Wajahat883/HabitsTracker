@@ -55,3 +55,14 @@ export async function forceRollover() {
   const response = await api.post('/habits/rollover/force');
   return response.data;
 }
+
+// 🚀 DYNAMIC TRACKING APIs
+export async function updateHabitProgress() {
+  const response = await api.post('/habits/progress/update');
+  return response.data;
+}
+
+export async function simulateHabitActivity() {
+  const response = await api.post('/habits/activity/simulate');
+  return response.data;
+}

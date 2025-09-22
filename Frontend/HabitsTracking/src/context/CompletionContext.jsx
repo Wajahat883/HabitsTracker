@@ -69,6 +69,12 @@ export function CompletionProvider({ children }) {
     setCache(prev => ({ ...prev, [habitId]: { ...(prev[habitId]||{}), [isoDate]: { status: next, locked: false } } }));
     try {
       await saveLog(habitId, { date: isoDate, status: next });
+      
+      // Dispatch logSaved event for dashboard refresh
+      window.dispatchEvent(new CustomEvent('logSaved', { 
+        detail: { habitId, date: isoDate, status: next } 
+      }));
+      
       // after successful save, refresh yesterday+today to ensure streaks are accurate
       const today = todayISO(); const y = addDays(today, -1);
       try {
@@ -97,11 +103,30 @@ export function CompletionProvider({ children }) {
               setCache(prev => ({ ...prev, [habitId]: { ...(prev[habitId] || {}), ...map } }));
             } catch { /* swallow */ }
         }
+
+        // 🚀 Auto-load tracking data when new habit is created
+        if (data && data.type === 'habitCreated' && data.habit) {
+          const habitId = data.habit._id;
+          setTimeout(() => {
+            ensureLoaded(habitId);
+          }, 1000); // Small delay to allow backend to create logs
+        }
+
+        // Refresh cache when progress is simulated
+        if (data && data.type === 'progressSimulated') {
+          // Refresh all cached habits
+          const habitIds = Object.keys(cache);
+          for (const habitId of habitIds) {
+            setTimeout(() => {
+              ensureLoaded(habitId);
+            }, 500);
+          }
+        }
           } catch { /* ignore */ }
     };
     window.addEventListener('habitUpdated', onHabitUpdated);
     return () => window.removeEventListener('habitUpdated', onHabitUpdated);
-  }, []);
+  }, [ensureLoaded, cache]);
 
   const getStreak = useCallback((habitId) => {
     const map = cache[habitId]; if (!map) return 0;
