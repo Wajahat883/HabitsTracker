@@ -45,8 +45,27 @@ export function CompletionProvider({ children }) {
     setLoadingHabits(l => ({ ...l, [habitId]: true }));
     try {
       const range = { from: addDays(todayISO(), -30), to: todayISO() };
-      const logs = await fetchLogs(habitId, range);
-      const map = {}; logs.forEach(l => { map[l.date] = { status: l.status, locked: l.locked || false }; });
+      const response = await fetchLogs(habitId, range);
+      
+      // Handle different response formats
+      let logs = [];
+      if (Array.isArray(response)) {
+        logs = response;
+      } else if (response && Array.isArray(response.logs)) {
+        logs = response.logs;
+      } else if (response && Array.isArray(response.data)) {
+        logs = response.data;
+      } else {
+        console.warn(`Invalid logs format for habit ${habitId}:`, response);
+        logs = [];
+      }
+      
+      const map = {}; 
+      logs.forEach(l => { 
+        if (l && l.date) {
+          map[l.date] = { status: l.status || 'incomplete', locked: l.locked || false }; 
+        }
+      });
       setCache(prev => ({ ...prev, [habitId]: map }));
     } catch (error) { 
       console.warn(`Failed to load habit ${habitId}:`, error); 

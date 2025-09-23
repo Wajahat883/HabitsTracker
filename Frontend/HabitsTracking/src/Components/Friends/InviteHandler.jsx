@@ -17,7 +17,7 @@ export default function InviteHandler() {
   const loadInviteDetails = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001'}/api/friends/invite/${inviteId}`);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/friends/invite/${inviteId}`);
       
       if (!response.ok) {
         throw new Error('Invite not found or expired');
@@ -35,7 +35,7 @@ export default function InviteHandler() {
   const acceptInvite = async () => {
     try {
       setAccepting(true);
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001'}/api/friends/accept`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/friends/accept`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
