@@ -81,6 +81,7 @@ export default function NotificationBell() {
 
   const handleAcceptFriendRequest = async (notificationId, requestId) => {
     try {
+      console.log('Accepting friend request:', { notificationId, requestId });
       await acceptFriendRequest(requestId);
       await handleMarkAsRead(notificationId);
       setNotifications(prev => 
@@ -88,11 +89,32 @@ export default function NotificationBell() {
       );
     } catch (error) {
       console.error('Failed to accept friend request:', error);
+      console.error('Full error:', error.response?.data);
+      
+      // Handle orphaned notification (410 Gone status)
+      if (error.response?.status === 410) {
+        console.log('Friend request no longer available, cleaning up notification');
+        setNotifications(prev => 
+          prev.map(n => n._id === notificationId ? { 
+            ...n, 
+            actionTaken: true,
+            read: true,
+            message: 'This friend request is no longer available'
+          } : n)
+        );
+        // Show user-friendly message instead of error
+        console.info('Friend request cleaned up automatically');
+        return;
+      }
+      
+      // Show error to user for other cases
+      // Could add toast notification here
     }
   };
 
   const handleRejectFriendRequest = async (notificationId, requestId) => {
     try {
+      console.log('Rejecting friend request:', { notificationId, requestId });
       await rejectFriendRequest(requestId);
       await handleMarkAsRead(notificationId);
       setNotifications(prev => 
@@ -100,6 +122,26 @@ export default function NotificationBell() {
       );
     } catch (error) {
       console.error('Failed to reject friend request:', error);
+      console.error('Full error:', error.response?.data);
+      
+      // Handle orphaned notification (410 Gone status)
+      if (error.response?.status === 410) {
+        console.log('Friend request no longer available, cleaning up notification');
+        setNotifications(prev => 
+          prev.map(n => n._id === notificationId ? { 
+            ...n, 
+            actionTaken: true,
+            read: true,
+            message: 'This friend request is no longer available'
+          } : n)
+        );
+        // Show user-friendly message instead of error
+        console.info('Friend request cleaned up automatically');
+        return;
+      }
+      
+      // Show error to user for other cases
+      // Could add toast notification here
     }
   };
 

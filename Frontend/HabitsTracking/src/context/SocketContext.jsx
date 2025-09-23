@@ -14,7 +14,7 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     if (!token) {
-      console.log('🔌 Socket.IO: No auth token found, connection skipped');
+      console.info('🔌 Socket.IO: Waiting for authentication - connection will initialize after login');
       return;
     }
     // Avoid duplicate connections

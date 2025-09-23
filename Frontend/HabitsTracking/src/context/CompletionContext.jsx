@@ -41,26 +41,31 @@ export function CompletionProvider({ children }) {
   useEffect(()=> { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(cache)); } catch { /* ignore persist errors */ } }, [cache]);
 
   const ensureLoaded = useCallback(async (habitId) => {
-    if (loadingHabits[habitId] || cache[habitId]) return;
+    if (!habitId || loadingHabits[habitId] || cache[habitId]) return;
     setLoadingHabits(l => ({ ...l, [habitId]: true }));
     try {
       const range = { from: addDays(todayISO(), -30), to: todayISO() };
       const logs = await fetchLogs(habitId, range);
       const map = {}; logs.forEach(l => { map[l.date] = { status: l.status, locked: l.locked || false }; });
       setCache(prev => ({ ...prev, [habitId]: map }));
-    } catch { /* silent */ }
+    } catch (error) { 
+      console.warn(`Failed to load habit ${habitId}:`, error); 
+    }
     finally { setLoadingHabits(l => ({ ...l, [habitId]: false })); }
   }, [cache, loadingHabits]);
 
   const getStatus = useCallback((habitId, isoDate) => {
+    if (!habitId || !isoDate) return 'incomplete';
     return cache[habitId]?.[isoDate]?.status || 'incomplete';
   }, [cache]);
 
   const isLocked = useCallback((habitId, isoDate) => {
+    if (!habitId || !isoDate) return false;
     return cache[habitId]?.[isoDate]?.locked || false;
   }, [cache]);
 
   const toggleStatus = useCallback(async (habitId, isoDate) => {
+    if (!habitId || !isoDate) return 'incomplete';
     const today = todayISO();
     if (isoDate !== today) return getStatus(habitId, isoDate); // ignore non-today toggles
     await ensureLoaded(habitId);
@@ -129,6 +134,7 @@ export function CompletionProvider({ children }) {
   }, [ensureLoaded, cache]);
 
   const getStreak = useCallback((habitId) => {
+    if (!habitId) return 0;
     const map = cache[habitId]; if (!map) return 0;
     let streak = 0; let day = todayISO();
     while (map[day]?.status === 'completed') { streak++; day = addDays(day, -1); }
@@ -138,6 +144,7 @@ export function CompletionProvider({ children }) {
   // Streak with a single-miss tolerance: user can miss at most 1 day;
   // upon encountering the 2nd missed (incomplete or skipped not counted as completed) day, streak ends.
   const getStreakTolerance = useCallback((habitId) => {
+    if (!habitId) return 0;
     const map = cache[habitId]; if (!map) return 0;
     let day = todayISO();
     let streak = 0;
@@ -158,12 +165,14 @@ export function CompletionProvider({ children }) {
   }, [cache]);
 
   const getTotals = useCallback((habitId) => {
+    if (!habitId) return { completed:0, skipped:0 };
     const map = cache[habitId]; if (!map) return { completed:0, skipped:0 };
     let completed=0, skipped=0; Object.values(map).forEach(entry => { if (entry?.status==='completed') completed++; else if (entry?.status==='skipped') skipped++; });
     return { completed, skipped };
   }, [cache]);
 
   const removeHabit = useCallback((habitId) => {
+    if (!habitId) return;
     setCache(prev => {
       if (!(habitId in prev)) return prev;
       const clone = { ...prev };

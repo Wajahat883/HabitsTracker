@@ -60,6 +60,7 @@ const Dashboard = () => {
   
   // Dynamic Progress State
   const [dynamicProgressData, setDynamicProgressData] = useState({});
+  const [lastProgressUpdate, setLastProgressUpdate] = useState(new Date());
   const [friendsProgress, setFriendsProgress] = useState([]);
   const [timeOfDay, setTimeOfDay] = useState('');
 
@@ -265,6 +266,7 @@ const Dashboard = () => {
         }
         
         setDynamicProgressData(progressData);
+        setLastProgressUpdate(new Date());
         
       } catch (error) {
         console.error('Error loading dynamic progress data:', error);

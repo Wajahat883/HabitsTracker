@@ -1,6 +1,7 @@
 import User from "../Models/User.js";
 import Friend from "../Models/Friend.js";
 import FriendRequest from "../Models/FriendRequest.js";
+import Notification from "../Models/Notification.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import ApiError from "../utils/ApiErros.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -77,7 +78,19 @@ export const sendFriendRequest = asyncHandler(async (req, res) => {
     const { receiverId, message = "" } = req.body;
     const senderId = req.user._id;
     
+    console.log('=== SENDING FRIEND REQUEST ===');
+    console.log('Sender ID:', senderId.toString());
+    console.log('Receiver ID:', receiverId);
+    console.log('Message:', message);
+    console.log('Request body:', req.body);
+    
+    if (!receiverId) {
+        console.log('ERROR: No receiverId provided');
+        throw new ApiError(400, "Receiver ID is required");
+    }
+    
     if (senderId.toString() === receiverId) {
+        console.log('ERROR: Trying to send request to self');
         throw new ApiError(400, "Cannot send friend request to yourself");
     }
     
@@ -114,13 +127,26 @@ export const sendFriendRequest = asyncHandler(async (req, res) => {
     
     await friendRequest.populate('sender', 'username email profilePicture');
     
+    // Create database notification
+    const notification = await Notification.create({
+        user: receiverId,
+        from: senderId,
+        type: 'friend_request',
+        title: 'New Friend Request',
+        message: `${friendRequest.sender.username || 'Someone'} sent you a friend request`,
+        data: {
+            friendRequestId: friendRequest._id
+        }
+    });
+    
     // Emit real-time notification
     const io = req.app.get('io');
     const broadcastToUser = req.app.get('broadcastToUser');
     if (io && broadcastToUser) {
         broadcastToUser(receiverId, 'friendRequest:received', {
             request: friendRequest,
-            sender: friendRequest.sender
+            sender: friendRequest.sender,
+            notification: notification
         });
     }
     
@@ -199,18 +225,106 @@ export const respondToFriendRequest = asyncHandler(async (req, res) => {
     const { action } = req.body; // 'accept' or 'reject'
     const userId = req.user._id;
     
+    console.log('=== FRIEND REQUEST DEBUG START ===');
+    console.log('Request ID from params:', requestId);
+    console.log('Action from body:', action);
+    console.log('Current user ID:', userId.toString());
+    console.log('Request body:', req.body);
+    console.log('Request params:', req.params);
+    
     if (!['accept', 'reject'].includes(action)) {
+        console.log('ERROR: Invalid action provided:', action);
         throw new ApiError(400, "Action must be 'accept' or 'reject'");
     }
     
+    // Validate requestId format
+    if (!requestId || !requestId.match(/^[0-9a-fA-F]{24}$/)) {
+        console.log('ERROR: Invalid requestId format:', requestId);
+        throw new ApiError(400, "Invalid friend request ID format:" + requestId);
+    }
+    
+    console.log('=== SEARCHING FOR FRIEND REQUEST ===');
+    
+    // First check if ANY friend request exists with this ID
+    const anyFriendRequest = await FriendRequest.findById(requestId);
+    console.log('Any friend request with ID exists:', !!anyFriendRequest);
+    
+    if (anyFriendRequest) {
+        console.log('Found friend request details:', {
+            id: anyFriendRequest._id.toString(),
+            sender: anyFriendRequest.sender.toString(),
+            receiver: anyFriendRequest.receiver.toString(),
+            status: anyFriendRequest.status,
+            createdAt: anyFriendRequest.createdAt
+        });
+        console.log('Is current user the receiver?', anyFriendRequest.receiver.toString() === userId.toString());
+        console.log('Request status:', anyFriendRequest.status);
+    } else {
+        console.log('NO friend request found with ID:', requestId);
+    }
+    
+    // Find the friend request for this user that's still pending
     const friendRequest = await FriendRequest.findOne({
         _id: requestId,
         receiver: userId,
         status: 'pending'
     }).populate('sender', 'username email profilePicture');
     
+    console.log('Friend request found for current user with pending status:', !!friendRequest);
+    
     if (!friendRequest) {
-        throw new ApiError(404, "Friend request not found");
+        console.log('=== FRIEND REQUEST NOT FOUND - HANDLING ORPHANED NOTIFICATION ===');
+        
+        // Check if the request exists but has already been processed
+        const existingRequest = await FriendRequest.findOne({
+            _id: requestId,
+            receiver: userId
+        });
+        
+        if (existingRequest && existingRequest.status !== 'pending') {
+            console.log('ERROR: Request already processed with status:', existingRequest.status);
+            
+            // Mark the notification as processed since the request was already handled
+            await Notification.updateOne(
+                { 
+                    user: userId, 
+                    'data.friendRequestId': requestId,
+                    type: 'friend_request'
+                },
+                { actionTaken: true }
+            );
+            
+            throw new ApiError(400, `Friend request has already been ${existingRequest.status}`);
+        }
+        
+        // Check if the request exists but user is not the receiver
+        const anyRequest = await FriendRequest.findById(requestId);
+        if (anyRequest && anyRequest.receiver.toString() !== userId.toString()) {
+            console.log('ERROR: User not authorized - Expected receiver:', userId.toString(), 'Actual:', anyRequest.receiver.toString());
+            throw new ApiError(403, "You are not authorized to respond to this friend request");
+        }
+        
+        // If we reach here, the friend request truly doesn't exist (orphaned notification)
+        console.log('=== ORPHANED NOTIFICATION DETECTED ===');
+        console.log('Friend request ID:', requestId, 'does not exist in database');
+        
+        // Clean up the orphaned notification by marking it as processed
+        const cleanupResult = await Notification.updateOne(
+            { 
+                user: userId, 
+                'data.friendRequestId': requestId,
+                type: 'friend_request'
+            },
+            { 
+                actionTaken: true,
+                read: true,
+                message: 'This friend request is no longer available' 
+            }
+        );
+        
+        console.log('Cleaned up orphaned notification:', cleanupResult.modifiedCount > 0 ? 'Success' : 'None found');
+        
+        throw new ApiError(410, "This friend request is no longer available. The notification has been cleared.");
     }
     
     // Update request status
@@ -223,6 +337,18 @@ export const respondToFriendRequest = asyncHandler(async (req, res) => {
             user: friendRequest.sender._id,
             friend: userId,
             status: 'accepted'
+        });
+        
+        // Create notification for sender about acceptance
+        await Notification.create({
+            user: friendRequest.sender._id,
+            from: userId,
+            type: 'friend_accepted',
+            title: 'Friend Request Accepted',
+            message: `${req.user.username || 'Someone'} accepted your friend request`,
+            data: {
+                friendId: userId
+            }
         });
         
         // Emit real-time notifications
@@ -245,6 +371,19 @@ export const respondToFriendRequest = asyncHandler(async (req, res) => {
             });
         }
     }
+    
+    // Mark the original friend request notification as action taken
+    await Notification.updateOne(
+        { 
+            user: userId, 
+            'data.friendRequestId': requestId,
+            type: 'friend_request'
+        },
+        { actionTaken: true }
+    );
+    
+    console.log('=== FRIEND REQUEST PROCESSED SUCCESSFULLY ===');
+    console.log('Action:', action, 'Request ID:', requestId);
     
     return res.status(200).json(
         new ApiResponse(200, friendRequest, `Friend request ${action}ed successfully`)

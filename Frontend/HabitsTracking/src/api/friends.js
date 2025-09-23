@@ -15,11 +15,7 @@ export function fetchFriends() {
 }
 
 export function inviteFriend(payload) {
-  return jsonPost('/friends/invite', payload);
-}
-
-export function acceptInvite(inviteId) {
-  return jsonPost('/friends/accept', { inviteId });
+  return jsonPost('/friends/request', payload);
 }
 
 export function removeFriend(id) {
@@ -27,13 +23,13 @@ export function removeFriend(id) {
 }
 
 export function fetchFriendRequests() {
-  return jsonGet('/friends/requests');
+  return jsonGet('/friends/requests/received');
 }
 
 export function acceptFriendRequest(requestId) {
-  return jsonPost('/friends/requests/accept', { requestId });
+  return api.patch(`/friends/requests/${requestId}`, { action: 'accept' }).then(response => response.data);
 }
 
 export function rejectFriendRequest(requestId) {
-  return jsonPost('/friends/requests/reject', { requestId });
+  return api.patch(`/friends/requests/${requestId}`, { action: 'reject' }).then(response => response.data);
 }

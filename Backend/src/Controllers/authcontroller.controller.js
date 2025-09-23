@@ -158,7 +158,7 @@ const googleAuth = asyncHandler(async (req, res) => {
     user.profilePicture = picture;
     user.isGoogleUser = true;
     await user.save();
-  }
+  } 
 
   const { accessToken, refreshToken } = generateTokens(user._id);
   user.refreshToken = refreshToken;
