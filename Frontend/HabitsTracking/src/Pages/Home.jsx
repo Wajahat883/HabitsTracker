@@ -316,62 +316,66 @@ const Home = () => {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-4xl font-bold" style={{color: 'var(--color-text)'}}>
-              Good morning, <span className="text-gradient">{user?.name || user?.username || 'User'}!</span>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight" style={{color: 'var(--color-text)'}}>
+              Good morning, <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                {user?.name || user?.username || 'User'}!
+              </span>
             </h1>
-            <span className="text-3xl">👋</span>
+            <span className="text-3xl animate-pulse">👋</span>
           </div>
-          <p className="text-lg" style={{color: 'var(--color-text-muted)'}}>
+          <p className="text-lg text-muted leading-relaxed" style={{color: 'var(--color-text-muted)'}}>
             {formatDate(currentDate)}
           </p>
         </div>
 
         {/* Overall Progress */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold" style={{color: 'var(--color-text)'}}>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-semibold tracking-tight" style={{color: 'var(--color-text)'}}>
               Today's Progress
             </h2>
-            <div className="flex items-center gap-6 text-right">
-              <div>
-                <div className="text-2xl font-bold text-emerald-500">{overallStats.completed}</div>
-                <div className="text-sm" style={{color: 'var(--color-text-muted)'}}>Completed</div>
+            <div className="flex items-center gap-8 text-right">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-emerald-500 leading-tight">{overallStats.completed}</div>
+                <div className="text-sm font-medium tracking-wide" style={{color: 'var(--color-text-muted)'}}>Completed</div>
               </div>
-              <div>
-                <div className="text-2xl font-bold" style={{color: 'var(--color-text)'}}>{overallStats.total}</div>
-                <div className="text-sm" style={{color: 'var(--color-text-muted)'}}>Total Habits</div>
+              <div className="text-center">
+                <div className="text-3xl font-bold leading-tight" style={{color: 'var(--color-text)'}}>{overallStats.total}</div>
+                <div className="text-sm font-medium tracking-wide" style={{color: 'var(--color-text-muted)'}}>Total Habits</div>
               </div>
-              <div>
-                <div className="text-2xl font-bold text-blue-500">{overallStats.percentage}%</div>
-                <div className="text-sm" style={{color: 'var(--color-text-muted)'}}>Complete</div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-blue-500 leading-tight">{overallStats.percentage}%</div>
+                <div className="text-sm font-medium tracking-wide" style={{color: 'var(--color-text-muted)'}}>Complete</div>
               </div>
             </div>
           </div>
           
           {/* Progress Bar */}
-          <div className="relative h-3 rounded-full overflow-hidden" style={{background: 'var(--color-border)'}}>
+          <div className="relative h-4 rounded-full overflow-hidden shadow-inner" style={{background: 'var(--color-border)'}}>
             <div 
-              className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-500 to-blue-500 transition-all duration-500 ease-out"
+              className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-500 to-blue-500 transition-all duration-700 ease-out rounded-full"
               style={{width: `${overallStats.percentage}%`}}
             ></div>
-            <div className="absolute top-0 right-4 text-xs font-medium text-right pt-0.5" style={{color: 'var(--color-text)'}}>
-              {overallStats.completed} of {overallStats.total} habits
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xs font-semibold tracking-wide" style={{color: overallStats.percentage > 50 ? 'white' : 'var(--color-text)'}}>
+                {overallStats.completed} of {overallStats.total} habits
+              </span>
             </div>
           </div>
         </div>
 
         {/* Habits Section */}
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold" style={{color: 'var(--color-text)'}}>
+          <h2 className="text-2xl font-bold tracking-tight" style={{color: 'var(--color-text)'}}>
             Today's Habits
           </h2>
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="btn-glass px-6 py-3 rounded-xl"
+            className="btn-glass px-6 py-3 rounded-xl font-medium text-base hover:scale-105 transition-all duration-200"
           >
             <span className="flex items-center gap-2">
               <span className="text-xl">➕</span>
-              Add Habit
+              <span className="tracking-wide">Add Habit</span>
             </span>
           </button>
         </div>
@@ -386,15 +390,15 @@ const Home = () => {
                     {habit.icon}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg" style={{color: 'var(--color-text)'}}>{habit.name}</h3>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm px-2 py-1 rounded-full ${getColorClasses(habit.color, 'light')} ${getColorClasses(habit.color, 'primary')}`}>
+                    <h3 className="font-semibold text-lg leading-snug tracking-tight" style={{color: 'var(--color-text)'}}>{habit.name}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium tracking-wide ${getColorClasses(habit.color, 'light')} ${getColorClasses(habit.color, 'primary')}`}>
                         {habit.type}
                       </span>
                       {habit.streak && (
                         <div className="flex items-center gap-1">
                           <span className="text-orange-500">🔥</span>
-                          <span className="text-sm font-medium" style={{color: 'var(--color-text-muted)'}}>{habit.streak}</span>
+                          <span className="text-sm font-semibold tracking-wide" style={{color: 'var(--color-text-muted)'}}>{habit.streak}</span>
                         </div>
                       )}
                     </div>

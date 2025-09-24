@@ -6,6 +6,7 @@ import UserSearch from "../Components/Friends/UserSearch";
 import AllUsersList from "../Components/Friends/AllUsersList";
 import SocialFeaturesTest from "../Components/Common/SocialFeaturesTest";
 import AreaManagerModal from "../Components/Areas/AreaManagerModal";
+import MilestoneNotification from "../Components/Common/MilestoneNotification";
 import { Bar, Doughnut, Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -30,6 +31,8 @@ import InviteFriends from "../Components/Friends/InviteFriends";
 import DynamicTracker from "../Components/Habits/DynamicTracker";
 import { fetchFriendsProgress } from "../api/progress";
 import { useCompletion } from "../context/CompletionContext";
+import { getUserStats, saveUserStats, calculateEnhancedStats, getDynamicGreeting, cleanupOldData } from "../utils/streakUtils";
+// import { enhancedProgressAPI, syncStreakData } from "../services/enhancedProgressAPI"; // Disabled for now
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -58,10 +61,12 @@ const Dashboard = () => {
   const [showHabitForm, setShowHabitForm] = useState(false);
   const [showAreaManager, setShowAreaManager] = useState(false);
   
+  // Remove unused state
+  // const [timeOfDay, setTimeOfDay] = useState(''); - removed since we use greetingData now
+  
   // Dynamic Progress State
   const [dynamicProgressData, setDynamicProgressData] = useState({});
   const [friendsProgress, setFriendsProgress] = useState([]);
-  const [timeOfDay, setTimeOfDay] = useState('');
 
   // Context data
   const {
@@ -88,34 +93,113 @@ const Dashboard = () => {
     });
   }, [friends]);
 
-  // Get time of day greeting
-  const getTimeOfDayGreeting = useCallback(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
+  // Enhanced streak tracking system with localStorage persistence
+  const [userStats, setUserStats] = useState(() => {
+    try {
+      return getUserStats();
+    } catch (error) {
+      console.error('Error initializing user stats:', error);
+      return {
+        longestOverallStreak: 0,
+        currentOverallStreak: 0,
+        totalHabitsCompleted: 0,
+        streakHistory: [],
+        milestones: [],
+        lastUpdated: new Date().toISOString(),
+        streakBreakHistory: [],
+        weeklyStats: {
+          completedThisWeek: 0,
+          weekStart: new Date().toISOString().split('T')[0]
+        }
+      };
+    }
+  });
+  const [milestones, setMilestones] = useState([]);
+
+  // Dynamic greeting state
+  const [greetingData, setGreetingData] = useState(() => getDynamicGreeting(userStats));
+
+  // Update greeting every minute
+  useEffect(() => {
+    const updateGreeting = () => setGreetingData(getDynamicGreeting(userStats));
+    updateGreeting();
+    
+    const interval = setInterval(updateGreeting, 60000);
+    return () => clearInterval(interval);
+  }, [userStats]);
+
+  // Enhanced stats calculation with streak persistence and backend sync
+  const calculateStats = useCallback(async () => {
+    try {
+      // Ensure we have valid data
+      if (!habits || !Array.isArray(habits)) {
+        console.warn('Habits data is not valid, skipping stats calculation');
+        return;
+      }
+
+      if (!dynamicProgressData || typeof dynamicProgressData !== 'object') {
+        console.warn('Dynamic progress data is not valid, skipping stats calculation');
+        return;
+      }
+
+      // Get current user stats to avoid stale closure
+      const currentUserStats = getUserStats();
+
+      if (!currentUserStats) {
+        console.warn('User stats is not valid, skipping stats calculation');
+        return;
+      }
+
+      // First calculate using local data
+      const result = calculateEnhancedStats(habits, dynamicProgressData, currentUserStats);
+      
+      if (!result) {
+        console.error('calculateEnhancedStats returned null/undefined');
+        return;
+      }
+      
+      // Update local state immediately
+      if (result.dashboardStats) {
+        setDashboardStats(result.dashboardStats);
+      }
+      
+      if (result.userStats) {
+        setUserStats(result.userStats);
+      }
+      
+      // Show milestone notifications if any new milestones were achieved
+      if (result.newMilestones && Array.isArray(result.newMilestones) && result.newMilestones.length > 0) {
+        setMilestones(result.newMilestones);
+      }
+
+      // Backend sync disabled - using local storage only for now
+      // This prevents network errors when backend server isn't running
+      
+      // Future: Enable this when backend is available
+      // if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      //   try {
+      //     const syncedStats = await syncStreakData(result.userStats);
+      //     if (syncedStats && syncedStats !== result.userStats) {
+      //       setUserStats(syncedStats);
+      //       saveUserStats(syncedStats);
+      //     }
+      //   } catch {
+      //     console.log('Backend sync skipped (server not available)');
+      //   }
+      // }
+    } catch (error) {
+      console.error('Error calculating stats:', error);
+    }
+  }, [habits, dynamicProgressData]); // Removed userStats to prevent infinite loop
+
+  // Cleanup old data periodically
+  useEffect(() => {
+    try {
+      cleanupOldData();
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+    }
   }, []);
-
-  // Calculate dashboard statistics
-  const calculateStats = useCallback(() => {
-    const totalHabits = habits.length;
-    const activeStreaks = Object.values(dynamicProgressData).filter(p => p.currentStreak > 0).length;
-    const weeklyProgress = Object.values(dynamicProgressData).length > 0 
-      ? Math.round(Object.values(dynamicProgressData).reduce((sum, p) => sum + p.weeklyProgress, 0) / Object.values(dynamicProgressData).length)
-      : 0;
-    const completionRate = Math.round((activeStreaks / Math.max(totalHabits, 1)) * 100);
-    const longestStreak = Math.max(0, ...Object.values(dynamicProgressData).map(p => p.currentStreak));
-    const todayCompleted = Object.values(dynamicProgressData).filter(p => p.todayCompleted).length;
-
-    setDashboardStats({
-      totalHabits,
-      activeStreaks,
-      weeklyProgress,
-      completionRate,
-      longestStreak,
-      todayCompleted
-    });
-  }, [habits.length, dynamicProgressData]);
 
   // Chart data for habit progress
   const chartData = useMemo(() => {
@@ -279,9 +363,13 @@ const Dashboard = () => {
   }, [ensureLoaded, habits, getStreak]);
 
   // Calculate stats when data changes
+  const dynamicProgressKeys = useMemo(() => Object.keys(dynamicProgressData).length, [dynamicProgressData]);
+  
   useEffect(() => {
-    calculateStats();
-  }, [calculateStats]);
+    if (habits.length > 0 && dynamicProgressKeys > 0) {
+      calculateStats();
+    }
+  }, [habits.length, dynamicProgressKeys, calculateStats]);
 
   // Friends progress loading
   useEffect(() => {
@@ -296,14 +384,7 @@ const Dashboard = () => {
     return () => { ignore = true; };
   }, [friends.length]);
 
-  // Update time of day
-  useEffect(() => {
-    setTimeOfDay(getTimeOfDayGreeting());
-    const interval = setInterval(() => {
-      setTimeOfDay(getTimeOfDayGreeting());
-    }, 60000); // Update every minute
-    return () => clearInterval(interval);
-  }, [getTimeOfDayGreeting]);
+  // Enhanced time-of-day updates - removed redundant useEffect since it's handled above
 
   // Listen for section changes
   useEffect(() => {
@@ -324,14 +405,14 @@ const Dashboard = () => {
     }
   }, [areas]);
 
-  const StatCard = ({ icon: Icon, title, value, subtitle, color, trend }) => (
+  const StatCard = ({ icon: IconComponent, title, value, subtitle, color, trend }) => (
     <div className="relative group">
       <div className={`absolute inset-0 bg-gradient-to-r ${color} rounded-2xl blur-xl transition-all duration-300 group-hover:blur-2xl opacity-20`}></div>
       <div className="relative backdrop-blur-xl border rounded-2xl p-6 transition-all duration-300 hover:scale-105 transform" 
            style={{background: 'var(--glass-bg)', borderColor: 'var(--glass-border)'}}>
         <div className="flex items-center justify-between mb-4">
           <div className={`p-3 bg-gradient-to-r ${color} rounded-xl shadow-lg icon-bounce`}>
-            <Icon className="w-6 h-6 text-white" />
+            <IconComponent className="w-6 h-6 text-white" />
           </div>
           {trend && (
             <div className="text-xs text-green-500 font-medium">
@@ -369,6 +450,14 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen" style={{background: 'var(--gradient-bg)'}}>
+      {/* Milestone Notifications */}
+      {milestones.length > 0 && (
+        <MilestoneNotification 
+          milestones={milestones} 
+          onDismiss={() => setMilestones([])} 
+        />
+      )}
+      
       {/* Enhanced Navigation Header */}
       <div className="sticky top-0 z-40 backdrop-blur-xl border-b" style={{
         background: 'var(--glass-bg)',
@@ -383,16 +472,21 @@ const Dashboard = () => {
                   <FaRocket className="w-8 h-8 text-white" />
                 </div>
               </div>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  {timeOfDay}! 👋
+              <div className="p-10">
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent leading-snug">
+                  {greetingData.greeting}!
                 </h1>
-                <p className="text-sm opacity-75" style={{color: 'var(--color-text-muted)'}}>
-                  Ready to build great habits today?
-                </p>
+                {/* <p className="text-sm opacity-75" style={{color: 'var(--color-text-muted)'}}>
+                  {greetingData.subMessage}
+                </p> */}
+                {/* <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                  <span>🔥 Overall Streak: {userStats.currentOverallStreak}</span>
+                  <span>📊 Best: {userStats.longestOverallStreak}</span>
+                  <span>✅ Total Completed: {userStats.totalHabitsCompleted}</span>
+                </div> */}
               </div>
             </div>
-            <div className="flex items-center space-x-3">
+            {/* <div className="flex items-center space-x-3">
               <button
                 onClick={() => setShowHabitForm(true)}
                 className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 btn-press"
@@ -400,7 +494,7 @@ const Dashboard = () => {
                 <FaBolt className="w-4 h-4 inline mr-2" />
                 New Habit
               </button>
-            </div>
+            </div> */}
           </div>
           
           {/* Enhanced Navigation Tabs */}
@@ -412,11 +506,7 @@ const Dashboard = () => {
               { id: "Social Hub", label: "🌍 Community", icon: FaUsers },
               { id: "Friends", label: "👥 Friends", icon: FaHeart },
               { id: "Status", label: "⚡ Status", icon: FaBolt }
-            ].concat(areas.map(a => ({ 
-              id: `AREA_${a.id}`, 
-              label: `📁 ${a.name}`, 
-              icon: FaStar 
-            }))).map(section => (
+            ].map(section => (
               <button
                 key={section.id}
                 onClick={() => setActiveSection(section.id)}
@@ -435,7 +525,7 @@ const Dashboard = () => {
                 {section.label}
               </button>
             ))}
-            <button
+            {/* <button
               onClick={() => setShowAreaManager(true)}
               className="px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-all duration-300 transform hover:scale-105 border-2 border-dashed btn-press"
               style={{
@@ -444,7 +534,7 @@ const Dashboard = () => {
               }}
             >
               + Area
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
@@ -559,6 +649,14 @@ const Dashboard = () => {
                   trend={dashboardStats.longestStreak > 7 ? 25 : null}
                 />
                 <StatCard
+                  icon={FaHeart}
+                  title="Overall Streak"
+                  value={userStats.currentOverallStreak}
+                  subtitle={`Best: ${userStats.longestOverallStreak}`}
+                  color="from-pink-500 to-rose-500"
+                  trend={userStats.currentOverallStreak > userStats.longestOverallStreak * 0.8 ? 20 : null}
+                />
+                <StatCard
                   icon={FaCalendarAlt}
                   title="Today Done"
                   value={dashboardStats.todayCompleted}
@@ -570,28 +668,6 @@ const Dashboard = () => {
 
               {/* Main Dashboard Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-                {/* Today's Progress Tracker */}
-                <div className="xl:col-span-2 relative group reveal-card">
-                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-3xl blur-xl"></div>
-                  <div className="relative backdrop-blur-xl border rounded-3xl p-8 card-hover" 
-                       style={{background: 'var(--glass-bg)', borderColor: 'var(--glass-border)'}}>
-                    <div className="flex items-center gap-4 mb-6">
-                      <div className="p-4 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl shadow-lg icon-bounce">
-                        <FaBolt className="w-8 h-8 text-white" />
-                      </div>
-                      <div>
-                        <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
-                          Today's Habits
-                        </h2>
-                        <p className="opacity-75" style={{color: 'var(--color-text-muted)'}}>
-                          Track and complete your daily habits
-                        </p>
-                      </div>
-                    </div>
-                    <DynamicTracker />
-                  </div>
-                </div>
-
                 {/* Today's Completion Chart */}
                 <div className="relative group reveal-card">
                   <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-3xl blur-xl"></div>
@@ -690,7 +766,7 @@ const Dashboard = () => {
                       </div>
                     </div>
                     <div className="space-y-3">
-                      {uniqueFriends.slice(0, 3).map((friend, index) => (
+                      {uniqueFriends.slice(0, 3).map((friend) => (
                         <div key={friend._id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">

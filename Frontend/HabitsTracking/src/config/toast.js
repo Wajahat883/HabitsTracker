@@ -14,9 +14,16 @@ export const toastConfig = {
 
 // Custom toast functions with predefined styles
 // Only show error toasts; all other calls become silent no-ops per new requirement.
+// Exception: success messages are allowed for authentication flows
 const noop = () => {};
 export const showToast = {
-  success: noop,
+  success: (message, options = {}) => {
+    toast.success(message, {
+      ...toastConfig,
+      ...options,
+      className: 'bg-green-600 text-white',
+    });
+  },
   warning: noop,
   info: noop,
   habitCreated: noop,

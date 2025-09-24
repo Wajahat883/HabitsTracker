@@ -6,7 +6,7 @@ import Login from "./Components/Auth/Login";
 import Signup from "./Components/Auth/Signup";
 import Dashboard from "./Pages/Dashboard";
 import Home from "./Pages/Home";
-import LandingPage from "./Pages/LandingPage";
+import LandingPageNew from "./Pages/LandingPageNew";
 import AppShell from "./Components/AppShell";
 import { CompletionProvider } from './context/CompletionContext';
 import { ChartDataProvider } from "./context/ChartDataContext";
@@ -32,7 +32,7 @@ const AppRouter = () => {
   return (
     <Routes>
       {/* Public routes - Landing page is the default */}
-      <Route path="/" element={authenticated ? <Navigate to="/app/home" replace /> : <LandingPage />} />
+      <Route path="/" element={authenticated ? <Navigate to="/app/home" replace /> : <LandingPageNew />} />
       <Route path="/login" element={authenticated ? <Navigate to="/app/home" replace /> : <Login />} />
       <Route path="/signup" element={authenticated ? <Navigate to="/app/home" replace /> : <Signup />} />
       

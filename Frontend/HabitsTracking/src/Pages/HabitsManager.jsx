@@ -276,7 +276,7 @@ const HabitsManager = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-4xl font-bold text-gray-800 mb-2">
-                {getGreeting()}, {currentUser.name || 'User'}! 👋
+                {getGreeting()}, {currentUser.name || 'User'}! 
               </h1>
               <p className="text-gray-600">
                 {new Date().toLocaleDateString('en-US', { 

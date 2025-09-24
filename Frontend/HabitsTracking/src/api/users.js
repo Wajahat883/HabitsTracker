@@ -26,6 +26,17 @@ function unwrap(payload) {
   return payload;
 }
 
+// Auth functions
+export async function signup(email, password, username) {
+  const res = await jsonPost('/auth/register', { email, password, username });
+  return unwrap(res);
+}
+
+export async function login(email, password) {
+  const res = await jsonPost('/auth/login', { email, password });
+  return unwrap(res);
+}
+
 // Get all users
 export async function getAllUsers(page = 1, limit = 20) {
   const res = await jsonGet(`/auth/users?page=${page}&limit=${limit}`);

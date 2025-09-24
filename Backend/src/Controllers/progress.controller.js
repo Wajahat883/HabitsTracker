@@ -43,6 +43,101 @@ export const progressSummary = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
+// Enhanced user stats with detailed streak tracking
+export const enhancedUserStats = async (req, res, next) => {
+  try {
+    const { range = '30d' } = req.query;
+    const days = parseInt(range) || 30;
+    const endDate = todayStr();
+    const startDate = new Date(Date.now() - (days-1)*86400000).toISOString().slice(0,10);
+
+    const habits = await Habit.find({ user: req.user.userId, isArchived: false });
+    const logs = await HabitLog.find({ 
+      user: req.user.userId, 
+      date: { $gte: startDate, $lte: endDate } 
+    }).sort({ date: -1 });
+
+    const logsByHabit = logs.reduce((acc,l)=>{ 
+      acc[l.habit] = acc[l.habit]||[]; 
+      acc[l.habit].push(l); 
+      return acc;
+    }, {});
+    
+    Object.values(logsByHabit).forEach(arr => arr.sort((a,b)=> b.date.localeCompare(a.date)));
+
+    let totalRequired = 0, totalCompleted = 0, streaks = [];
+    const habitStreaks = [];
+    const streakBreaks = [];
+    
+    for (const h of habits) {
+      const habitLogs = logsByHabit[h._id] || [];
+      const streak = calculateDailyStreak(habitLogs, 1);
+      streaks.push(streak);
+      habitStreaks.push({ 
+        habitId: h._id, 
+        title: h.title, 
+        streak,
+        lastCompleted: habitLogs.find(l => l.status === 'completed')?.date || null,
+        totalCompleted: habitLogs.filter(l => l.status === 'completed').length,
+        consistency: habitLogs.length > 0 ? 
+          Math.round((habitLogs.filter(l => l.status === 'completed').length / habitLogs.length) * 100) : 0
+      });
+      
+      totalRequired += days;
+      totalCompleted += habitLogs.filter(l => l.status === 'completed').length;
+    }
+
+    const overallCompletion = totalRequired ? Number(((totalCompleted/totalRequired)*100).toFixed(1)) : 0;
+    const avgStreak = streaks.length ? Number((streaks.reduce((a,b)=>a+b,0)/streaks.length).toFixed(1)) : 0;
+    const longestStreak = streaks.length ? Math.max(...streaks) : 0;
+    const currentOverallStreak = streaks.reduce((sum, streak) => sum + streak, 0);
+    
+    // Calculate weekly stats
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    
+    const weekLogs = await HabitLog.find({
+      user: req.user.userId,
+      date: { $gte: weekStart.toISOString().slice(0,10), $lte: endDate },
+      status: 'completed'
+    });
+    
+    // Get streak history (last 30 days)
+    const streakHistory = [];
+    for (let i = 0; i < Math.min(days, 30); i++) {
+      const date = new Date(Date.now() - i * 86400000).toISOString().slice(0,10);
+      const dayLogs = logs.filter(l => l.date === date && l.status === 'completed');
+      streakHistory.unshift({
+        date,
+        completed: dayLogs.length,
+        habits: dayLogs.map(l => l.habit)
+      });
+    }
+
+    habitStreaks.sort((a,b)=> b.streak - a.streak);
+
+    return res.json(new ApiResponse(200, { 
+      overallCompletion, 
+      activeHabits: habits.length, 
+      avgStreak, 
+      longestStreak,
+      currentOverallStreak,
+      habitStreaks,
+      totalCompleted,
+      weeklyCompleted: weekLogs.length,
+      streakHistory,
+      consistency: overallCompletion,
+      milestones: {
+        achieved: streaks.filter(s => s >= 10).length,
+        next: streaks.length > 0 ? Math.min(...streaks.filter(s => s < 50).map(s => Math.ceil(s/10) * 10)) : 10
+      }
+    }));
+  } catch (e) { 
+    next(e); 
+  }
+};
+
 export const heatmap = async (req, res, next) => {
   try {
     const { year = new Date().getFullYear() } = req.query;
